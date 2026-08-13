@@ -30,7 +30,8 @@ logs and configuration must not become part of the release.
 
 - [x] Validate a standalone export from `apps/macos` without importing unrelated
   monorepo history; its tests and unsigned Release build pass independently.
-- [ ] Create the public GitHub repository from the validated export.
+- [x] Create the public GitHub repository from the validated export:
+  `carlosrebato/ai-usage-mac`.
 - [x] Run secret scanning over the source tree; the new repository starts with
   no inherited history.
 - [x] Replace personal Team ID, bundle IDs and App Group with documented build
@@ -49,7 +50,7 @@ logs and configuration must not become part of the release.
 - [x] Submit to Apple's notary service, staple the ticket and pass `spctl`
   assessment.
 - [ ] Test the downloaded artifact with Gatekeeper on a clean Mac.
-- [ ] Publish a GitHub Release containing the notarized ZIP, SHA-256 checksum and
+- [x] Publish a GitHub Release containing the notarized ZIP, SHA-256 checksum and
   changelog.
 - [ ] Protect signing/notarization secrets in a GitHub environment with manual
   approval; never expose them to pull-request workflows.
@@ -61,4 +62,4 @@ logs and configuration must not become part of the release.
 - [ ] Add Help, Privacy and Report an Issue links.
 - [ ] Add local diagnostic export without prompts, responses or credentials.
 - [ ] Document supported Claude/Codex versions and the pricing-data update policy.
-- [ ] Choose the first public version and maintain a changelog.
+- [x] Choose the first public version (`0.1.0-beta.1`) and maintain a changelog.

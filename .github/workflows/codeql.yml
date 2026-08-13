@@ -3,8 +3,12 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
   schedule:
     - cron: "17 4 * * 1"
 
@@ -36,6 +40,7 @@ jobs:
           -destination 'generic/platform=macOS'
           ARCHS=arm64
           ONLY_ACTIVE_ARCH=YES
+          SWIFT_COMPILATION_MODE=wholemodule
           CODE_SIGNING_ALLOWED=NO
           build
       - uses: github/codeql-action/analyze@v4
