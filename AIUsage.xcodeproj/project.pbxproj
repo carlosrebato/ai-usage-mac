@@ -1,0 +1,563 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0F196387F3DE33EB7CA4E7A0 /* AIUsageWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B074A93DB7C6710897C43BA9 /* AIUsageWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		12F73AF21BF9F35F7D11F96F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F17790B1FDFFFA95070A3874 /* Assets.xcassets */; };
+		1CE25234CE59B34D7F81C72A /* AIUsageMacServices in Frameworks */ = {isa = PBXBuildFile; productRef = 9956EE383533FBF8AA2BD530 /* AIUsageMacServices */; };
+		4784C1B9DAAE01C66139AAC0 /* AIUsageMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97662764C540C87CA535A972 /* AIUsageMacApp.swift */; };
+		4D15F626E0B5B2FED14108ED /* FloatingPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF66BFFCA242CE4776551F2 /* FloatingPanelView.swift */; };
+		51120F7DAA3F1159180EF9DE /* AIUsageDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 7E08062852C441777264C92B /* AIUsageDesignSystem */; };
+		6CBC0C10ED5587FB869E5623 /* AIUsageWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896ACE1407350F5EE0D5B228 /* AIUsageWidgets.swift */; };
+		71B6D5D44FD8506C36D61C62 /* AIUsageCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1C6776C86CC470D976609DDC /* AIUsageCore */; };
+		7AFCA9588C8495F6F4D923A6 /* ConnectionSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BBC7E8EA18221FEE74D8C5 /* ConnectionSetupView.swift */; };
+		83FECE383B57238B0947C875 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3A97FAFB482A477083468 /* DashboardView.swift */; };
+		8980B2E21706482AF929213E /* AIUsageDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 33A466B72D30E386F4E0C48B /* AIUsageDesignSystem */; };
+		99CA125DCD0C9140B327A1BE /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467D89BE150B861D10E8C014 /* AppPreferences.swift */; };
+		9CCB09B60326A086B1C9AF36 /* ClaudeDesktopAccessPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E807D698482110899B3D06D /* ClaudeDesktopAccessPicker.swift */; };
+		A5F0EC474D33A2481EF64CEE /* AIUsageCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CC39A105434D411E1B3D4AA /* AIUsageCore */; };
+		B4E36E5543601BA79A58A24E /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBEB9DBCAD3BB4D03259BD97 /* MenuBarView.swift */; };
+		C51AABB15C27D0E4D3ACC15D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA2A443BF3B5552C6D5E824 /* OnboardingView.swift */; };
+		EFB4D7CBC5D68457948A079D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26BC9C6C2BB3A2D8E8AD2508 /* SettingsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A62A20247226E2205372D47C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC31984D16480DB472562C9B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A029C525EB8B9A542A7087E;
+			remoteInfo = AIUsageWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C579A4CC338F17D670FFDB52 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0F196387F3DE33EB7CA4E7A0 /* AIUsageWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		04BBC7E8EA18221FEE74D8C5 /* ConnectionSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSetupView.swift; sourceTree = "<group>"; };
+		26BC9C6C2BB3A2D8E8AD2508 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3C596C0928838DD236DB3D49 /* AIUsageMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIUsageMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		467D89BE150B861D10E8C014 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
+		6E807D698482110899B3D06D /* ClaudeDesktopAccessPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeDesktopAccessPicker.swift; sourceTree = "<group>"; };
+		80F3A97FAFB482A477083468 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		896ACE1407350F5EE0D5B228 /* AIUsageWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageWidgets.swift; sourceTree = "<group>"; };
+		8EF66BFFCA242CE4776551F2 /* FloatingPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPanelView.swift; sourceTree = "<group>"; };
+		97662764C540C87CA535A972 /* AIUsageMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageMacApp.swift; sourceTree = "<group>"; };
+		9BA2A443BF3B5552C6D5E824 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		B074A93DB7C6710897C43BA9 /* AIUsageWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AIUsageWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBEB9DBCAD3BB4D03259BD97 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		E97081109A6730B7337EAF06 /* macos */ = {isa = PBXFileReference; lastKnownFileType = folder; name = macos; path = .; sourceTree = SOURCE_ROOT; };
+		F17790B1FDFFFA95070A3874 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7B737F590EBEC71CEC3F48FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5F0EC474D33A2481EF64CEE /* AIUsageCore in Frameworks */,
+				8980B2E21706482AF929213E /* AIUsageDesignSystem in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		923486D59F0F17546CC144C7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71B6D5D44FD8506C36D61C62 /* AIUsageCore in Frameworks */,
+				51120F7DAA3F1159180EF9DE /* AIUsageDesignSystem in Frameworks */,
+				1CE25234CE59B34D7F81C72A /* AIUsageMacServices in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1A9B208FA40296A655AEFA28 = {
+			isa = PBXGroup;
+			children = (
+				A9FA2B59CCABD9EE4380E95A /* App */,
+				65C9F6C49F90B59D7DAD9264 /* Packages */,
+				2738FC3E8C48F3B1A9354735 /* Widgets */,
+				D1EA4B205244318972602FEE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2738FC3E8C48F3B1A9354735 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				896ACE1407350F5EE0D5B228 /* AIUsageWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		65C9F6C49F90B59D7DAD9264 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E97081109A6730B7337EAF06 /* macos */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		A9FA2B59CCABD9EE4380E95A /* App */ = {
+			isa = PBXGroup;
+			children = (
+				97662764C540C87CA535A972 /* AIUsageMacApp.swift */,
+				467D89BE150B861D10E8C014 /* AppPreferences.swift */,
+				F17790B1FDFFFA95070A3874 /* Assets.xcassets */,
+				6E807D698482110899B3D06D /* ClaudeDesktopAccessPicker.swift */,
+				04BBC7E8EA18221FEE74D8C5 /* ConnectionSetupView.swift */,
+				80F3A97FAFB482A477083468 /* DashboardView.swift */,
+				8EF66BFFCA242CE4776551F2 /* FloatingPanelView.swift */,
+				CBEB9DBCAD3BB4D03259BD97 /* MenuBarView.swift */,
+				9BA2A443BF3B5552C6D5E824 /* OnboardingView.swift */,
+				26BC9C6C2BB3A2D8E8AD2508 /* SettingsView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		D1EA4B205244318972602FEE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3C596C0928838DD236DB3D49 /* AIUsageMac.app */,
+				B074A93DB7C6710897C43BA9 /* AIUsageWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7A029C525EB8B9A542A7087E /* AIUsageWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EBC424C98D4A5EF71FA6DF27 /* Build configuration list for PBXNativeTarget "AIUsageWidgets" */;
+			buildPhases = (
+				86697C62ADAD6F9DCD8EE61B /* Sources */,
+				7B737F590EBEC71CEC3F48FD /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AIUsageWidgets;
+			packageProductDependencies = (
+				1CC39A105434D411E1B3D4AA /* AIUsageCore */,
+				33A466B72D30E386F4E0C48B /* AIUsageDesignSystem */,
+			);
+			productName = AIUsageWidgets;
+			productReference = B074A93DB7C6710897C43BA9 /* AIUsageWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		E4AC3E315FB2C2BBBC586CD2 /* AIUsageMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D4453887631DB3FDA032F74F /* Build configuration list for PBXNativeTarget "AIUsageMac" */;
+			buildPhases = (
+				9A20FC4B6B888349B6DFFCB1 /* Sources */,
+				9D938856A6CFEB37460461CF /* Resources */,
+				923486D59F0F17546CC144C7 /* Frameworks */,
+				C579A4CC338F17D670FFDB52 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6944BB559E16F5CBC7B72972 /* PBXTargetDependency */,
+			);
+			name = AIUsageMac;
+			packageProductDependencies = (
+				1C6776C86CC470D976609DDC /* AIUsageCore */,
+				7E08062852C441777264C92B /* AIUsageDesignSystem */,
+				9956EE383533FBF8AA2BD530 /* AIUsageMacServices */,
+			);
+			productName = AIUsageMac;
+			productReference = 3C596C0928838DD236DB3D49 /* AIUsageMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FC31984D16480DB472562C9B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7A029C525EB8B9A542A7087E = {
+						ProvisioningStyle = Automatic;
+					};
+					E4AC3E315FB2C2BBBC586CD2 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 675A56653B4760E375E29321 /* Build configuration list for PBXProject "AIUsage" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1A9B208FA40296A655AEFA28;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D9BA54869666A90F14B42FB0 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D1EA4B205244318972602FEE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E4AC3E315FB2C2BBBC586CD2 /* AIUsageMac */,
+				7A029C525EB8B9A542A7087E /* AIUsageWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9D938856A6CFEB37460461CF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12F73AF21BF9F35F7D11F96F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		86697C62ADAD6F9DCD8EE61B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CBC0C10ED5587FB869E5623 /* AIUsageWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A20FC4B6B888349B6DFFCB1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4784C1B9DAAE01C66139AAC0 /* AIUsageMacApp.swift in Sources */,
+				99CA125DCD0C9140B327A1BE /* AppPreferences.swift in Sources */,
+				9CCB09B60326A086B1C9AF36 /* ClaudeDesktopAccessPicker.swift in Sources */,
+				7AFCA9588C8495F6F4D923A6 /* ConnectionSetupView.swift in Sources */,
+				83FECE383B57238B0947C875 /* DashboardView.swift in Sources */,
+				4D15F626E0B5B2FED14108ED /* FloatingPanelView.swift in Sources */,
+				B4E36E5543601BA79A58A24E /* MenuBarView.swift in Sources */,
+				C51AABB15C27D0E4D3ACC15D /* OnboardingView.swift in Sources */,
+				EFB4D7CBC5D68457948A079D /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6944BB559E16F5CBC7B72972 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A029C525EB8B9A542A7087E /* AIUsageWidgets */;
+			targetProxy = A62A20247226E2205372D47C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		5A134270719DB49A1178E8D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AI_USAGE_APP_BUNDLE_ID = com.example.aiusage;
+				AI_USAGE_APP_GROUP = group.com.example.aiusage;
+				AI_USAGE_WIDGET_BUNDLE_ID = "$(AI_USAGE_APP_BUNDLE_ID).widgets";
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		757A803AF8A994A29BED5B57 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = "Configurations/AIUsageWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "AI Usage Widgets";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		7DFB4C762C6E7EDC629D7FEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_AIUsageAppGroup = "$(AI_USAGE_APP_GROUP)";
+				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_APP_BUNDLE_ID)";
+				PRODUCT_NAME = "AI Usage";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		B9A61AED4FE480B8BDC8C069 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_AIUsageAppGroup = "$(AI_USAGE_APP_GROUP)";
+				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_APP_BUNDLE_ID)";
+				PRODUCT_NAME = "AI Usage";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		DD27B17B073F91912A07EA3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = "Configurations/AIUsageWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "AI Usage Widgets";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		EDBEAA0B908976FCC70C3006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AI_USAGE_APP_BUNDLE_ID = com.example.aiusage;
+				AI_USAGE_APP_GROUP = group.com.example.aiusage;
+				AI_USAGE_WIDGET_BUNDLE_ID = "$(AI_USAGE_APP_BUNDLE_ID).widgets";
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		675A56653B4760E375E29321 /* Build configuration list for PBXProject "AIUsage" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDBEAA0B908976FCC70C3006 /* Debug */,
+				5A134270719DB49A1178E8D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D4453887631DB3FDA032F74F /* Build configuration list for PBXNativeTarget "AIUsageMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7DFB4C762C6E7EDC629D7FEE /* Debug */,
+				B9A61AED4FE480B8BDC8C069 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EBC424C98D4A5EF71FA6DF27 /* Build configuration list for PBXNativeTarget "AIUsageWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				757A803AF8A994A29BED5B57 /* Debug */,
+				DD27B17B073F91912A07EA3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D9BA54869666A90F14B42FB0 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1C6776C86CC470D976609DDC /* AIUsageCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIUsageCore;
+		};
+		1CC39A105434D411E1B3D4AA /* AIUsageCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIUsageCore;
+		};
+		33A466B72D30E386F4E0C48B /* AIUsageDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIUsageDesignSystem;
+		};
+		7E08062852C441777264C92B /* AIUsageDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIUsageDesignSystem;
+		};
+		9956EE383533FBF8AA2BD530 /* AIUsageMacServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIUsageMacServices;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = FC31984D16480DB472562C9B /* Project object */;
+}

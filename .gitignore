@@ -1,0 +1,16 @@
+.build/
+.artifacts/
+.derivedData/
+DerivedData/
+.swiftpm/
+AIUsage [0-9]*.xcodeproj/
+*.xcresult
+*.ipa
+*.dmg
+*.zip
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.xcuserstate
+xcuserdata/
+.DS_Store

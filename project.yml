@@ -1,0 +1,107 @@
+name: AIUsage
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    macOS: "15.0"
+  groupSortPosition: top
+
+packages:
+  AIUsageKit:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    AI_USAGE_APP_BUNDLE_ID: com.example.aiusage
+    AI_USAGE_WIDGET_BUNDLE_ID: $(AI_USAGE_APP_BUNDLE_ID).widgets
+    AI_USAGE_APP_GROUP: group.com.example.aiusage
+
+targets:
+  AIUsageMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: AIUsageKit
+        product: AIUsageCore
+      - package: AIUsageKit
+        product: AIUsageDesignSystem
+      - package: AIUsageKit
+        product: AIUsageMacServices
+      - target: AIUsageWidgets
+        embed: true
+    entitlements:
+      path: Configurations/AIUsageMac.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(AI_USAGE_APP_GROUP)
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.files.user-selected.read-only: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(AI_USAGE_APP_BUNDLE_ID)
+        PRODUCT_NAME: AI Usage
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: AI Usage
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_AIUsageAppGroup: $(AI_USAGE_APP_GROUP)
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+
+  AIUsageWidgets:
+    type: app-extension
+    platform: macOS
+    info:
+      path: Configurations/AIUsageWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: AI Usage
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AIUsageAppGroup: $(AI_USAGE_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    sources:
+      - path: Widgets
+    dependencies:
+      - package: AIUsageKit
+        product: AIUsageCore
+      - package: AIUsageKit
+        product: AIUsageDesignSystem
+    entitlements:
+      path: Configurations/AIUsageWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(AI_USAGE_APP_GROUP)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(AI_USAGE_WIDGET_BUNDLE_ID)
+        PRODUCT_NAME: AI Usage Widgets
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: YES
+        SKIP_INSTALL: YES
+
+schemes:
+  AIUsageMac:
+    build:
+      targets:
+        AIUsageMac: all
+        AIUsageWidgets: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

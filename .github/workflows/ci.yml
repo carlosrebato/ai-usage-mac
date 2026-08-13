@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-usage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Test
+        run: swift test --jobs 1 -Xswiftc -disable-batch-mode
+      - name: Build universal unsigned diagnostic
+        run: Scripts/build-unsigned-artifact.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: AI-Usage-unsigned-diagnostic
+          path: .artifacts/AI-Usage-unsigned.zip
+          retention-days: 7
