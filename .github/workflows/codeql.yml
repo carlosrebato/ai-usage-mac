@@ -26,5 +26,16 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: swift
-      - uses: github/codeql-action/autobuild@v4
+          build-mode: manual
+      - name: Build app for analysis
+        run: >-
+          xcodebuild
+          -project AIUsage.xcodeproj
+          -scheme AIUsageMac
+          -configuration Debug
+          -destination 'generic/platform=macOS'
+          ARCHS=arm64
+          ONLY_ACTIVE_ARCH=YES
+          CODE_SIGNING_ALLOWED=NO
+          build
       - uses: github/codeql-action/analyze@v4
