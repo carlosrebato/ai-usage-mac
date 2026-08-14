@@ -24,7 +24,7 @@ jobs:
         run: swift test --jobs 1 -Xswiftc -disable-batch-mode
       - name: Build universal unsigned diagnostic
         run: Scripts/build-unsigned-artifact.sh
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: AI-Usage-unsigned-diagnostic
           path: .artifacts/AI-Usage-unsigned.zip
