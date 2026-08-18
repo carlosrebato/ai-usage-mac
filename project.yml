@@ -16,7 +16,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    CURRENT_PROJECT_VERSION: 2
+    CURRENT_PROJECT_VERSION: 3
     MARKETING_VERSION: 0.1.1
     AI_USAGE_APP_BUNDLE_ID: com.example.aiusage
     AI_USAGE_WIDGET_BUNDLE_ID: $(AI_USAGE_APP_BUNDLE_ID).widgets

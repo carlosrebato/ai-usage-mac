@@ -69,8 +69,8 @@ actor ClaudeOAuthConnector: UsageConnector {
             ))
         case .stale:
             throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
-                "Open Claude to refresh its session",
-                "Abre Claude para renovar su sesión"
+                "Run `claude auth login` in Terminal to refresh Claude Code",
+                "Ejecuta `claude auth login` en Terminal para renovar Claude Code"
             ))
         case .invalid:
             throw UsageConnectorError.serverError(AppLanguage.current.text(
@@ -85,8 +85,8 @@ actor ClaudeOAuthConnector: UsageConnector {
                 ))
             }
             throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
-                "Sign in to Claude Code or open Claude Desktop",
-                "Inicia sesión en Claude Code o abre Claude Desktop"
+                "Run `claude auth login` once in Terminal. The button copies the command.",
+                "Ejecuta `claude auth login` una vez en Terminal. El botón copia el comando."
             ))
         }
     }

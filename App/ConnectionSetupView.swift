@@ -89,7 +89,10 @@ struct ConnectionSetupView: View {
     private func actionLabel(_ action: ProviderSetupAction, provider: UsageProviderID) -> String {
         switch action {
         case .grantPermission: language.text("Grant access", "Dar acceso")
-        case .signIn: "\(language.text("Open", "Abrir")) \(provider.displayName)"
+        case .signIn:
+            provider == .claude
+                ? language.text("Copy login command", "Copiar comando de acceso")
+                : language.text("Open Codex", "Abrir Codex")
         case .install: language.text("Install", "Instalar")
         case .retry: language.text("Retry", "Reintentar")
         }
@@ -102,7 +105,7 @@ struct ConnectionSetupView: View {
         case .grantPermission, .retry:
             retry()
         case .signIn:
-            ProviderAppLauncher.open(provider, installationFallback: false)
+            ProviderAppLauncher.openSignIn(for: provider)
         case .install:
             ProviderAppLauncher.open(provider, installationFallback: true)
         }
@@ -110,6 +113,25 @@ struct ConnectionSetupView: View {
 }
 
 enum ProviderAppLauncher {
+    static func openSignIn(for provider: UsageProviderID) {
+        guard provider == .claude else {
+            open(provider, installationFallback: false)
+            return
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString("claude auth login", forType: .string)
+
+        guard let terminal = NSWorkspace.shared.urlForApplication(
+            withBundleIdentifier: "com.apple.Terminal"
+        ) else { return }
+        NSWorkspace.shared.openApplication(
+            at: terminal,
+            configuration: NSWorkspace.OpenConfiguration()
+        )
+    }
+
     static func open(_ provider: UsageProviderID, installationFallback: Bool) {
         if !installationFallback, openInstalledApplication(provider) { return }
         guard let url = downloadURL(provider) else { return }

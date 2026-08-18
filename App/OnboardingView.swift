@@ -46,6 +46,9 @@ struct OnboardingView: View {
             launchAtLogin.refresh()
             await store.refresh(force: true, allowInteraction: false)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await store.refreshWhenIdle(force: true, allowInteraction: false) }
+        }
     }
 
     private var onboardingContent: some View {
@@ -123,7 +126,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 22)
         }
-        .frame(width: 520)
+        .frame(width: 520, height: 590, alignment: .top)
         .background(SettingsPalette.backgroundGradient)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
@@ -589,7 +592,9 @@ struct OnboardingView: View {
                 title: language.text("Sign in to continue", "Inicia sesión para continuar"),
                 subtitle: message,
                 indicator: .attention,
-                actionTitle: "\(language.text("Open", "Abrir")) \(provider == .claude ? "Claude" : "Codex")",
+                actionTitle: provider == .claude
+                    ? language.text("Copy login command", "Copiar comando de acceso")
+                    : language.text("Open Codex", "Abrir Codex"),
                 actionIsQuiet: false
             )
         case .install:
@@ -645,7 +650,7 @@ struct OnboardingView: View {
         if let action = status?.action {
             switch action {
             case .signIn:
-                ProviderAppLauncher.open(provider, installationFallback: false)
+                ProviderAppLauncher.openSignIn(for: provider)
                 return
             case .install:
                 ProviderAppLauncher.open(provider, installationFallback: true)
