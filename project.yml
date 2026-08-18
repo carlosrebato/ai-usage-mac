@@ -16,7 +16,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    CURRENT_PROJECT_VERSION: 2
+    CURRENT_PROJECT_VERSION: 5
     MARKETING_VERSION: 0.1.1
     AI_USAGE_APP_BUNDLE_ID: com.example.aiusage
     AI_USAGE_WIDGET_BUNDLE_ID: $(AI_USAGE_APP_BUNDLE_ID).widgets
@@ -48,6 +48,9 @@ targets:
         com.apple.security.files.bookmarks.app-scope: true
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.network.client: true
+        com.apple.security.network.server: true
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)
         com.apple.security.temporary-exception.mach-lookup.global-name:
           - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
           - $(PRODUCT_BUNDLE_IDENTIFIER)-spki

@@ -24,6 +24,10 @@ xcodebuild \
 
 mkdir -p "$ARTIFACTS"
 rm -f "$ZIP_PATH"
-ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+ditto -c -k --norsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+if zipinfo -1 "$ZIP_PATH" | grep -Eq '(^__MACOSX/|/\._|^\._)'; then
+  echo "Artifact contains AppleDouble metadata." >&2
+  exit 1
+fi
 
 echo "Unsigned diagnostic artifact: $ZIP_PATH"

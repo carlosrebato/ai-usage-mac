@@ -23,7 +23,7 @@ public enum ProviderDataDirectory: String, CaseIterable, Sendable {
 
     fileprivate var acceptedFolderNames: Set<String> {
         switch self {
-        case .claude: ["Claude", ".claude"]
+        case .claude: ["Claude"]
         case .claudeCode: [".claude"]
         case .codex: [".codex"]
         }

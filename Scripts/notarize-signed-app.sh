@@ -25,12 +25,23 @@ echo "$SIGNING_INFO" | grep -q 'Authority=Developer ID Application:' || {
 }
 
 rm -f "$SUBMISSION_ZIP" "$FINAL_ZIP"
-ditto -c -k --keepParent "$APP_PATH" "$SUBMISSION_ZIP"
+ditto -c -k --norsrc --keepParent "$APP_PATH" "$SUBMISSION_ZIP"
 xcrun notarytool submit "$SUBMISSION_ZIP" --keychain-profile "$KEYCHAIN_PROFILE" --wait
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 spctl --assess --type execute --verbose=2 "$APP_PATH"
-ditto -c -k --keepParent "$APP_PATH" "$FINAL_ZIP"
+ditto -c -k --norsrc --keepParent "$APP_PATH" "$FINAL_ZIP"
+if zipinfo -1 "$FINAL_ZIP" | grep -Eq '(^__MACOSX/|/\._|^\._)'; then
+  echo "Release ZIP contains AppleDouble metadata that can invalidate the app signature." >&2
+  exit 1
+fi
+
+VERIFY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ai-usage-release-verify.XXXXXX")"
+trap 'rm -rf "$VERIFY_DIR"' EXIT HUP INT TERM
+/usr/bin/unzip -q "$FINAL_ZIP" -d "$VERIFY_DIR"
+codesign --verify --deep --strict --verbose=2 "$VERIFY_DIR/$APP_NAME"
+xcrun stapler validate "$VERIFY_DIR/$APP_NAME"
+spctl --assess --type execute --verbose=2 "$VERIFY_DIR/$APP_NAME"
 rm -f "$SUBMISSION_ZIP"
 
 echo "Notarized release artifact: $FINAL_ZIP"

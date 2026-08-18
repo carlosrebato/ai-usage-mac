@@ -83,7 +83,7 @@ struct ClaudeConnectorTests {
         #expect(snapshot == nil)
     }
 
-    @Test func missingBookmarkRequiresExplicitFolderAccess() async {
+    @Test func missingBookmarkOffersBrowserSignInWithoutFolderAccess() async {
         let missingStatusline = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathComponent("missing.json")
@@ -94,9 +94,9 @@ struct ClaudeConnectorTests {
 
         do {
             _ = try await connector.fetchSnapshot(allowInteraction: false)
-            Issue.record("La actualización debería requerir acceso a .claude")
+            Issue.record("La actualización debería pedir inicio de sesión")
         } catch let error as UsageConnectorError {
-            guard case .permissionRequired = error else {
+            guard case .notAuthenticated = error else {
                 Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
                 return
             }

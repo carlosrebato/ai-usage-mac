@@ -21,7 +21,9 @@ logs.
 
 - macOS 15 or later
 - At least one supported assistant signed in locally:
-  - Claude Code, which creates `~/.claude/.credentials.json`
+  - Claude: sign in securely in the browser from AI Usage. An existing Claude
+    Code session is reused when available; `~/.claude` access is optional and
+    used only for local token history and estimated API-equivalent cost.
   - Codex, which creates `~/.codex/auth.json`
 
 You can enable Claude, Codex or both. The Claude and Codex desktop apps are not
@@ -70,7 +72,10 @@ are never stored in the repository.
 ## How it works
 
 AI Usage opens a native dashboard and adds usage indicators to the menu bar.
-Claude reuses the existing Claude Code login in `~/.claude/.credentials.json`.
+Claude signs in through Anthropic's browser OAuth flow (PKCE with an automatic
+localhost callback) and stores the resulting session in AI Usage's own Keychain
+item. AI Usage never receives the user's password. An existing Claude Code
+credential remains a supported fallback.
 Codex reuses the existing login in `~/.codex/auth.json`. AI Usage then requests
 the current limits directly from the official Anthropic and OpenAI endpoints.
 Authentication is sent only to the corresponding provider, is never sent to the

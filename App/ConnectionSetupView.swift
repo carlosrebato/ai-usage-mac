@@ -11,6 +11,8 @@ struct ConnectionSetupView: View {
     let retry: () -> Void
     let grantClaudeDesktopAccess: () -> Void
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
+    @State private var isSigningInToClaude = false
+    @State private var signInError: String?
 
     private var pending: [ProviderConnectionStatus] {
         statuses.filter { status in
@@ -41,8 +43,8 @@ struct ConnectionSetupView: View {
                     connectionRow(status)
                 }
 
-                if let errorMessage {
-                    Text(errorMessage)
+                if let visibleError = signInError ?? errorMessage {
+                    Text(visibleError)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(UsageTheme.red)
                 }
@@ -89,7 +91,10 @@ struct ConnectionSetupView: View {
     private func actionLabel(_ action: ProviderSetupAction, provider: UsageProviderID) -> String {
         switch action {
         case .grantPermission: language.text("Grant access", "Dar acceso")
-        case .signIn: "\(language.text("Open", "Abrir")) \(provider.displayName)"
+        case .signIn:
+            provider == .claude
+                ? language.text("Sign in with Claude", "Iniciar sesión con Claude")
+                : language.text("Open Codex", "Abrir Codex")
         case .install: language.text("Install", "Instalar")
         case .retry: language.text("Retry", "Reintentar")
         }
@@ -102,7 +107,22 @@ struct ConnectionSetupView: View {
         case .grantPermission, .retry:
             retry()
         case .signIn:
-            ProviderAppLauncher.open(provider, installationFallback: false)
+            if provider == .claude {
+                guard !isSigningInToClaude else { return }
+                isSigningInToClaude = true
+                signInError = nil
+                Task { @MainActor in
+                    defer { isSigningInToClaude = false }
+                    do {
+                        try await ClaudeBrowserLogin.signIn()
+                        retry()
+                    } catch {
+                        signInError = error.localizedDescription
+                    }
+                }
+            } else {
+                ProviderAppLauncher.open(provider, installationFallback: false)
+            }
         case .install:
             ProviderAppLauncher.open(provider, installationFallback: true)
         }

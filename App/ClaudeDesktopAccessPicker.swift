@@ -6,7 +6,7 @@ import Foundation
 @MainActor
 enum ProviderDataAccessPicker {
     static func requestAccess(for provider: UsageProviderID) async throws -> Bool {
-        let dataDirectory: ProviderDataDirectory = provider == .claude ? .claude : .codex
+        let dataDirectory: ProviderDataDirectory = provider == .claude ? .claudeCode : .codex
         let providerName = provider == .claude ? "Claude" : "Codex"
         let language = AppLanguage.current
         let panel = NSOpenPanel()
@@ -41,12 +41,6 @@ enum ProviderDataAccessPicker {
         }
         guard response == .OK, let folder = panel.url else { return false }
         try ProviderDataAccess.shared.saveAccess(to: folder, for: dataDirectory)
-        // The Claude Code folder contains both the OAuth credential and token
-        // history. Reuse the same least-privilege grant instead of asking for
-        // the identical folder a second time in Settings.
-        if provider == .claude, folder.standardizedFileURL.lastPathComponent == ".claude" {
-            try ProviderDataAccess.shared.saveAccess(to: folder, for: .claudeCode)
-        }
         return true
     }
 }

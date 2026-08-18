@@ -46,6 +46,9 @@ struct OnboardingView: View {
             launchAtLogin.refresh()
             await store.refresh(force: true, allowInteraction: false)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await store.refreshWhenIdle(force: true, allowInteraction: false) }
+        }
     }
 
     private var onboardingContent: some View {
@@ -123,7 +126,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 22)
         }
-        .frame(width: 520)
+        .frame(width: 520, height: 590, alignment: .top)
         .background(SettingsPalette.backgroundGradient)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
@@ -589,7 +592,9 @@ struct OnboardingView: View {
                 title: language.text("Sign in to continue", "Inicia sesión para continuar"),
                 subtitle: message,
                 indicator: .attention,
-                actionTitle: "\(language.text("Open", "Abrir")) \(provider == .claude ? "Claude" : "Codex")",
+                actionTitle: provider == .claude
+                    ? language.text("Sign in with Claude", "Iniciar sesión con Claude")
+                    : language.text("Open Codex", "Abrir Codex"),
                 actionIsQuiet: false
             )
         case .install:
@@ -616,8 +621,8 @@ struct OnboardingView: View {
             title: provider == .claude ? "Claude" : "Codex",
             subtitle: provider == .claude
                 ? language.text(
-                    "Choose your .claude folder once to read your Claude Code session and counters.",
-                    "Elige una vez tu carpeta .claude para leer la sesión y contadores de Claude Code."
+                    "Sign in securely in your browser. AI Usage never sees your password.",
+                    "Inicia sesión de forma segura en el navegador. AI Usage nunca ve tu contraseña."
                 )
                 : language.text(
                     "Choose .codex once to read your local session and counters.",
@@ -633,6 +638,12 @@ struct OnboardingView: View {
         accessError = nil
         let status = store.connectionStatuses.first { $0.id == provider }
 
+        if provider == .claude,
+           status == nil || status?.phase == .checking {
+            beginClaudeSignIn()
+            return
+        }
+
         if status?.phase == .connected || status?.action == .grantPermission {
             Task { await connect(provider) }
             return
@@ -645,7 +656,11 @@ struct OnboardingView: View {
         if let action = status?.action {
             switch action {
             case .signIn:
-                ProviderAppLauncher.open(provider, installationFallback: false)
+                if provider == .claude {
+                    beginClaudeSignIn()
+                } else {
+                    ProviderAppLauncher.open(provider, installationFallback: false)
+                }
                 return
             case .install:
                 ProviderAppLauncher.open(provider, installationFallback: true)
@@ -656,6 +671,22 @@ struct OnboardingView: View {
         }
 
         Task { await refresh(provider) }
+    }
+
+    private func beginClaudeSignIn() {
+        guard busyProvider == nil else { return }
+        busyProvider = .claude
+        accessError = nil
+        Task { @MainActor in
+            defer { busyProvider = nil }
+            do {
+                try await ClaudeBrowserLogin.signIn()
+                setProviderVisible(true, provider: .claude)
+                await store.refreshWhenIdle(force: true, allowInteraction: false)
+            } catch {
+                accessError = error.localizedDescription
+            }
+        }
     }
 
     private func connect(_ provider: UsageProviderID) async {

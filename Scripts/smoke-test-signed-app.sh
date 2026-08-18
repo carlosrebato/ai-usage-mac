@@ -44,6 +44,22 @@ if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq '<key>com.apple.secur
   echo "The signed app is missing App Sandbox; App Group access may prompt on every launch." >&2
   exit 1
 fi
+if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq '<key>com.apple.security.network.server</key><true/>'; then
+  echo "The signed app cannot receive the local OAuth callback." >&2
+  exit 1
+fi
+EXPECTED_KEYCHAIN_GROUP="$TEAM_ID.$BUNDLE_ID"
+if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq "<key>keychain-access-groups</key><array><string>$EXPECTED_KEYCHAIN_GROUP</string>"; then
+  echo "The signed app is missing its OAuth Keychain access group: $EXPECTED_KEYCHAIN_GROUP" >&2
+  exit 1
+fi
+
+KEYCHAIN_REPORT="$($EXECUTABLE --verify-oauth-keychain)"
+if ! printf '%s' "$KEYCHAIN_REPORT" | grep -Eq '"keychainAccess"[[:space:]]*:[[:space:]]*true'; then
+  echo "The signed app cannot write and read its OAuth token in Keychain:" >&2
+  printf '%s\n' "$KEYCHAIN_REPORT" >&2
+  exit 1
+fi
 
 mkdir -p "$REPORT_DIR"
 iteration=1
