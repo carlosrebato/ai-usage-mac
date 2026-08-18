@@ -23,6 +23,7 @@ struct OnboardingView: View {
 
     @EnvironmentObject private var store: UsageStore
     @EnvironmentObject private var assistantSetupContext: AssistantSetupContext
+    @EnvironmentObject private var providerSelection: ProviderSelectionStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
@@ -33,122 +34,370 @@ struct OnboardingView: View {
     @State private var accessError: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 9) {
-                Text(headerTitle)
-                    .font(.system(size: 19, weight: .bold))
-                    .tracking(-0.35)
-                    .foregroundStyle(primaryText)
-
-                Text(headerSubtitle)
-                    .font(.system(size: 13))
-                    .foregroundStyle(secondaryText)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .frame(maxWidth: 370)
-            }
-            .padding(.top, 26)
-
-            VStack(spacing: 10) {
-                providerCard(.claude)
-                providerCard(.codex)
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 22)
-
-            HStack(spacing: 6) {
-                Image(systemName: "lock")
-                Text(language.text(
-                    "Granted access is always read-only.",
-                    "El acceso concedido es siempre de solo lectura."
-                ))
-            }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(tertiaryText)
-            .padding(.top, 13)
-
-            if let accessError {
-                Text(accessError)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(errorColor)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-                    .padding(.top, 8)
-            }
-
-            Spacer(minLength: 16)
-
+        Group {
             if isOnboarding {
-                VStack(alignment: .leading, spacing: 7) {
-                    Toggle(
-                        language.text("Open AI Usage at login", "Abrir AI Usage al iniciar sesión"),
-                        isOn: Binding(
-                            get: { launchAtLogin.isEnabled },
-                            set: { launchAtLogin.setEnabled($0) }
-                        )
-                    )
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 13))
-
-                    if launchAtLogin.status == .requiresApproval {
-                        Button(language.text("Confirm in System Settings", "Confirmar en Ajustes del Sistema")) {
-                            launchAtLogin.openSystemSettings()
-                        }
-                        .buttonStyle(.link)
-                        .font(.system(size: 11, weight: .medium))
-                    } else if let message = launchAtLogin.errorMessage {
-                        Text(message)
-                            .font(.system(size: 11))
-                            .foregroundStyle(errorColor)
-                    }
-                }
-                .padding(.horizontal, 26)
-                .padding(.bottom, 15)
+                onboardingContent
+            } else {
+                managementContent
             }
-
-            Divider().opacity(colorScheme == .dark ? 0.25 : 0.55)
-
-            HStack(spacing: 8) {
-                if isOnboarding, !canStart {
-                    Text(language.text(
-                        "Connect at least one assistant to get started",
-                        "Conecta al menos un asistente para empezar"
-                    ))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(tertiaryText)
-                }
-
-                Spacer()
-
-                if isOnboarding {
-                    Button(language.text("Not now", "Ahora no")) { finish(openDashboard: false) }
-                        .controlSize(.small)
-
-                    Button(language.text("Get started", "Empezar")) { finish(openDashboard: true) }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .tint(actionColor)
-                        .disabled(!canStart)
-                } else {
-                    Button(language.text("Done", "Listo")) {
-                        dismissWindow(id: "onboarding")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(actionColor)
-                    .keyboardShortcut(.defaultAction)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
         }
-        .frame(width: 480, height: isOnboarding ? 530 : 430)
-        .background(panelBackground)
-        .navigationTitle(windowTitle)
         .environment(\.locale, language.locale)
         .task {
             launchAtLogin.refresh()
             await store.refresh(force: true, allowInteraction: false)
+        }
+    }
+
+    private var onboardingContent: some View {
+        VStack(spacing: 0) {
+            managementTitleBar
+
+            VStack(spacing: 22) {
+                VStack(spacing: 8) {
+                    Text(headerTitle)
+                        .font(.system(size: 20, weight: .bold))
+                        .tracking(-0.4)
+                        .foregroundStyle(SettingsPalette.hero)
+
+                    Text(headerSubtitle)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(5)
+                        .frame(maxWidth: 410)
+                }
+
+                VStack(spacing: 10) {
+                    managementProviderCard(.claude)
+                    managementProviderCard(.codex)
+                }
+
+                if let accessError {
+                    Text(accessError)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(UsageTheme.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "lock")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(SettingsPalette.faint)
+                    Text(language.text(
+                        "Granted access is always read-only.",
+                        "El acceso concedido es siempre de solo lectura."
+                    ))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                }
+
+                onboardingLaunchRow
+
+                HStack(spacing: 8) {
+                    if !canStart {
+                        Text(language.text(
+                            "Connect at least one assistant to get started",
+                            "Conecta al menos un asistente para empezar"
+                        ))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SettingsPalette.secondary)
+                    }
+                    Spacer()
+                    ManagementGhostButton(title: language.text("Not now", "Ahora no")) {
+                        finish()
+                    }
+                    ManagementPrimaryButton(title: language.text("Get started", "Empezar")) {
+                        finish()
+                    }
+                    .disabled(!canStart)
+                    .opacity(canStart ? 1 : 0.42)
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(.top, 16)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Color.white.opacity(0.05)).frame(height: 1)
+                }
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 22)
+        }
+        .frame(width: 520)
+        .background(SettingsPalette.backgroundGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
+        .overlay(alignment: .top) {
+            Text(language.text("SET UP AI USAGE", "CONFIGURAR AI USAGE"))
+                .font(.system(size: 12, weight: .bold))
+                .tracking(1.92)
+                .foregroundStyle(SettingsPalette.secondary)
+                .frame(height: 44)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .ignoresSafeArea(.container, edges: .top)
+        .background(SettingsWindowConfigurator(title: windowTitle))
+        .preferredColorScheme(.dark)
+    }
+
+    private var onboardingLaunchRow: some View {
+        HStack(spacing: 13) {
+            Image(systemName: "power")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SettingsPalette.icon)
+                .frame(width: 30, height: 30)
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(language.text("Open at login", "Abrir al iniciar sesión"))
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(SettingsPalette.title)
+                Text(language.text(
+                    "AI Usage will open automatically",
+                    "AI Usage se abrirá automáticamente"
+                ))
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(SettingsPalette.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { launchAtLogin.isEnabled },
+                set: { launchAtLogin.setEnabled($0) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .tint(SettingsPalette.accent)
+        }
+        .padding(.horizontal, 15)
+        .padding(.vertical, 13)
+        .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    private var managementContent: some View {
+        VStack(spacing: 0) {
+            managementTitleBar
+
+            VStack(spacing: 22) {
+                VStack(spacing: 8) {
+                    Text(language.text(
+                        "Manage your AI assistants",
+                        "Gestiona tus asistentes de IA"
+                    ))
+                        .font(.system(size: 20, weight: .bold))
+                        .tracking(-0.4)
+                        .foregroundStyle(SettingsPalette.hero)
+
+                    Text(headerSubtitle)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(5)
+                        .frame(maxWidth: 400)
+                }
+                .padding(.horizontal, 20)
+
+                VStack(spacing: 10) {
+                    managementProviderCard(.claude)
+                    managementProviderCard(.codex)
+                }
+
+                if let accessError {
+                    Text(accessError)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(UsageTheme.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "lock")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(SettingsPalette.faint)
+
+                    Text(language.text(
+                        "Granted access is always read-only.",
+                        "El acceso concedido es siempre de solo lectura."
+                    ))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                }
+                .accessibilityElement(children: .combine)
+
+                HStack {
+                    Spacer()
+                    ManagementPrimaryButton(title: language.text("Done", "Listo")) {
+                        dismissWindow(id: "assistant-management")
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(.top, 16)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.05))
+                        .frame(height: 1)
+                }
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 22)
+        }
+        .frame(width: 520, height: 440)
+        .background(SettingsPalette.backgroundGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
+        .overlay(alignment: .top) {
+            Text(language.text("MANAGE AI ASSISTANTS", "GESTIONAR ASISTENTES DE IA"))
+                .font(.system(size: 12, weight: .bold))
+                .tracking(1.92)
+                .foregroundStyle(SettingsPalette.secondary)
+                .frame(height: 44)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .ignoresSafeArea(.container, edges: .top)
+        .background(SettingsWindowConfigurator(title: windowTitle))
+        .preferredColorScheme(.dark)
+    }
+
+    private var managementTitleBar: some View {
+        Color.clear
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.05))
+                .frame(height: 1)
+        }
+        .contentShape(Rectangle())
+        .accessibilityHidden(true)
+    }
+
+    private func managementProviderCard(_ provider: UsageProviderID) -> some View {
+        let state = cardState(for: provider)
+        let connected = state.indicator == .connected
+        let needsClaudeTokenAccess = provider == .claude
+            && ProviderDataAccess.shared.hasStoredAccess(for: .claude)
+            && !ProviderDataAccess.shared.hasUsableAccess(for: .claudeCode)
+        let actionTitle = needsClaudeTokenAccess
+            ? language.text("Add token history", "Añadir histórico de tokens")
+            : state.actionTitle
+
+        return HStack(spacing: 14) {
+            ProviderGlyph(provider: provider, size: 18, color: SettingsPalette.glyph)
+                .frame(width: 38, height: 38)
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    managementIndicator(state.indicator)
+
+                    Text(state.title)
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(SettingsPalette.title)
+                        .lineLimit(1)
+                }
+
+                Text(state.subtitle)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(SettingsPalette.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, state.indicator == .busy ? 0 : 15)
+            }
+
+            Spacer(minLength: 8)
+
+            if state.indicator == .busy {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(SettingsPalette.accent)
+            } else {
+                HStack(spacing: 8) {
+                    if connected {
+                        ManagementVisibilityButton(
+                            isVisible: isProviderVisible(provider),
+                            language: language
+                        ) {
+                            setProviderVisible(!isProviderVisible(provider), provider: provider)
+                        }
+                    }
+
+                    if let actionTitle {
+                        ManagementGhostButton(title: actionTitle) {
+                            if needsClaudeTokenAccess {
+                                Task { await connectClaudeTokenHistory() }
+                            } else {
+                                performAction(for: provider)
+                            }
+                        }
+                    }
+                }
+                .disabled(busyProvider != nil)
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 16)
+        .background {
+            if connected {
+                SettingsPalette.assistantGradient
+            } else {
+                Color.white.opacity(0.03)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(provider.displayName), \(state.title), \(state.subtitle)")
+    }
+
+    @ViewBuilder
+    private func managementIndicator(_ indicator: ProviderIndicator) -> some View {
+        switch indicator {
+        case .busy:
+            EmptyView()
+        case .connected:
+            Circle()
+                .fill(SettingsPalette.accent)
+                .frame(width: 7, height: 7)
+                .shadow(color: SettingsPalette.accent.opacity(0.55), radius: 5)
+        case .attention:
+            Circle()
+                .fill(UsageTheme.amber)
+                .frame(width: 7, height: 7)
+                .shadow(color: UsageTheme.amber.opacity(0.45), radius: 4)
+        case .error:
+            Circle()
+                .fill(UsageTheme.red)
+                .frame(width: 7, height: 7)
+                .shadow(color: UsageTheme.red.opacity(0.45), radius: 4)
+        case .none, .information:
+            Circle()
+                .fill(Color.white.opacity(0.25))
+                .frame(width: 7, height: 7)
         }
     }
 
@@ -276,12 +525,12 @@ struct OnboardingView: View {
                     : language.text("Checking…", "Comprobando…"),
                 subtitle: provider == .claude
                     ? language.text(
-                        "Checking the local Claude Desktop session.",
-                        "Comprobando la sesión local de Claude Desktop."
+                        "Checking the authorized Claude data folder.",
+                        "Comprobando la carpeta de datos autorizada de Claude."
                     )
                     : language.text(
-                        "Looking for a local Codex session.",
-                        "Buscando una sesión local de Codex."
+                        "Checking the authorized .codex folder.",
+                        "Comprobando la carpeta .codex autorizada."
                     ),
                 indicator: .busy,
                 actionTitle: nil,
@@ -300,9 +549,7 @@ struct OnboardingView: View {
                 title: "\(provider == .claude ? "Claude" : "Codex") \(language.text("connected", "conectado"))",
                 subtitle: message ?? language.text("Local session detected", "Sesión local detectada"),
                 indicator: .connected,
-                actionTitle: provider == .claude
-                    ? language.text("Change access", "Cambiar acceso")
-                    : language.text("Check", "Comprobar"),
+                actionTitle: language.text("Change access", "Cambiar acceso"),
                 actionIsQuiet: true
             )
         case .checking:
@@ -327,23 +574,14 @@ struct OnboardingView: View {
     ) -> CardState {
         switch action {
         case .grantPermission:
-            if provider == .claude {
-                guard ClaudeDesktopDataAccess.shared.hasUsableAccess else {
-                    return initialState(for: provider)
-                }
-                return CardState(
-                    title: language.text("Confirm access to Claude", "Confirma el acceso a Claude"),
-                    subtitle: message,
-                    indicator: .attention,
-                    actionTitle: language.text("Continue", "Continuar"),
-                    actionIsQuiet: false
-                )
-            }
             return CardState(
-                title: language.text("Codex needs permission", "Codex necesita permiso"),
+                title: language.text(
+                    "Choose the \(dataDirectory(for: provider).folderName) folder",
+                    "Elige la carpeta \(dataDirectory(for: provider).folderName)"
+                ),
                 subtitle: message,
                 indicator: .attention,
-                actionTitle: language.text("Retry", "Reintentar"),
+                actionTitle: language.text("Connect", "Conectar"),
                 actionIsQuiet: false
             )
         case .signIn:
@@ -378,12 +616,12 @@ struct OnboardingView: View {
             title: provider == .claude ? "Claude" : "Codex",
             subtitle: provider == .claude
                 ? language.text(
-                    "Uses your local Claude Desktop session. macOS will ask you to choose its data folder.",
-                    "Usa tu sesión local de Claude Desktop. macOS te pedirá elegir su carpeta de datos."
+                    "Choose your .claude folder once to read your Claude Code session and counters.",
+                    "Elige una vez tu carpeta .claude para leer la sesión y contadores de Claude Code."
                 )
                 : language.text(
-                    "Codex will be detected automatically on this Mac.",
-                    "Detectaremos automáticamente Codex en este Mac."
+                    "Choose .codex once to read your local session and counters.",
+                    "Elige .codex una vez para leer tu sesión y contadores locales."
                 ),
             indicator: .none,
             actionTitle: language.text("Connect", "Conectar"),
@@ -395,16 +633,12 @@ struct OnboardingView: View {
         accessError = nil
         let status = store.connectionStatuses.first { $0.id == provider }
 
-        if provider == .claude, status?.phase == .connected {
-            Task { await connectClaude() }
+        if status?.phase == .connected || status?.action == .grantPermission {
+            Task { await connect(provider) }
             return
         }
-        if provider == .claude, status?.action == .grantPermission {
-            if ClaudeDesktopDataAccess.shared.hasUsableAccess {
-                Task { await refresh(provider) }
-            } else {
-                Task { await connectClaude() }
-            }
+        if status?.phase == .checking {
+            Task { await connect(provider) }
             return
         }
 
@@ -424,13 +658,30 @@ struct OnboardingView: View {
         Task { await refresh(provider) }
     }
 
-    private func connectClaude() async {
+    private func connect(_ provider: UsageProviderID) async {
         do {
-            guard try await ClaudeDesktopAccessPicker.requestAccess() else { return }
-            await refresh(.claude)
+            guard try await ProviderDataAccessPicker.requestAccess(for: provider) else { return }
+            setProviderVisible(true, provider: provider)
+            await refresh(provider)
         } catch {
             accessError = error.localizedDescription
         }
+    }
+
+    private func connectClaudeTokenHistory() async {
+        accessError = nil
+        busyProvider = .claude
+        defer { busyProvider = nil }
+        do {
+            guard try await ClaudeCodeMetricsAccessPicker.requestAccess() else { return }
+            await store.refreshWhenIdle(force: true, allowInteraction: false)
+        } catch {
+            accessError = error.localizedDescription
+        }
+    }
+
+    private func dataDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {
+        provider == .claude ? .claude : .codex
     }
 
     private func refresh(_ provider: UsageProviderID) async {
@@ -440,12 +691,21 @@ struct OnboardingView: View {
     }
 
     private var canStart: Bool {
-        store.connectionStatuses.contains { $0.isConnected }
+        store.connectionStatuses.contains { status in
+            status.isConnected && isProviderVisible(status.id)
+        }
     }
 
-    private func finish(openDashboard: Bool) {
+    private func isProviderVisible(_ provider: UsageProviderID) -> Bool {
+        providerSelection.isActive(provider)
+    }
+
+    private func setProviderVisible(_ visible: Bool, provider: UsageProviderID) {
+        providerSelection.setActive(visible, for: provider)
+    }
+
+    private func finish() {
         onboardingCompleted = true
-        if openDashboard { openWindow(id: "dashboard") }
         dismissWindow(id: "onboarding")
     }
 
@@ -496,5 +756,78 @@ struct OnboardingView: View {
         colorScheme == .dark
             ? UsageTheme.red
             : Color(red: 211 / 255, green: 66 / 255, blue: 63 / 255)
+    }
+}
+
+private struct ManagementGhostButton: View {
+    let title: String
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(SettingsPalette.buttonText)
+            .padding(.horizontal, 15)
+            .frame(height: 31)
+            .background(Color.white.opacity(isHovering ? 0.08 : 0.04), in: Capsule())
+            .overlay {
+                Capsule().stroke(Color.white.opacity(isHovering ? 0.14 : 0.08), lineWidth: 1)
+            }
+            .onHover { isHovering = $0 }
+    }
+}
+
+private struct ManagementVisibilityButton: View {
+    let isVisible: Bool
+    let language: AppLanguage
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: isVisible ? "checkmark.square.fill" : "square")
+                Text(isVisible
+                    ? language.text("Shown", "Visible")
+                    : language.text("Show", "Mostrar"))
+            }
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 11.5, weight: .semibold))
+        .foregroundStyle(isVisible ? SettingsPalette.accent : SettingsPalette.buttonText)
+        .padding(.horizontal, 11)
+        .frame(height: 31)
+        .background(Color.white.opacity(isHovering ? 0.08 : 0.04), in: Capsule())
+        .overlay {
+            Capsule().stroke(
+                isVisible ? SettingsPalette.accent.opacity(0.35) : Color.white.opacity(0.08),
+                lineWidth: 1
+            )
+        }
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(language.text("Show assistant", "Mostrar asistente"))
+        .accessibilityValue(isVisible ? language.text("On", "Sí") : language.text("Off", "No"))
+    }
+}
+
+private struct ManagementPrimaryButton: View {
+    let title: String
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(Color(red: 7 / 255, green: 19 / 255, blue: 13 / 255))
+            .padding(.horizontal, 19)
+            .frame(height: 31)
+            .background(SettingsPalette.accent, in: Capsule())
+            .overlay { Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1) }
+            .brightness(isHovering ? 0.08 : 0)
+            .shadow(color: SettingsPalette.accent.opacity(0.5), radius: 8)
+            .onHover { isHovering = $0 }
     }
 }

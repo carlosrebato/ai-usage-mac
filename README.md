@@ -20,6 +20,16 @@ logs.
 ## Requirements
 
 - macOS 15 or later
+- At least one supported assistant signed in locally:
+  - Claude Code, which creates `~/.claude/.credentials.json`
+  - Codex, which creates `~/.codex/auth.json`
+
+You can enable Claude, Codex or both. The Claude and Codex desktop apps are not
+required; AI Usage uses the existing local sessions created by their command-line
+tools.
+
+### Requirements for contributors
+
 - Xcode 16 or later
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
@@ -60,10 +70,11 @@ are never stored in the repository.
 ## How it works
 
 AI Usage opens a native dashboard and adds usage indicators to the menu bar.
-Codex is detected and queried through the local `codex app-server`; its
-credentials never leave the Codex process. Claude reuses the existing Claude
-Code login and queries usage limits through OAuth. The app never stores tokens
-in its cache.
+Claude reuses the existing Claude Code login in `~/.claude/.credentials.json`.
+Codex reuses the existing login in `~/.codex/auth.json`. AI Usage then requests
+the current limits directly from the official Anthropic and OpenAI endpoints.
+Authentication is sent only to the corresponding provider, is never sent to the
+project maintainers and is never stored in the app's cache.
 
 - `AIUsageCore`: models, polling policy and shared cache.
 - `AIUsageDesignSystem`: visual tokens and reusable components.
@@ -86,12 +97,13 @@ index. On an 818 MB local history, the measured cold import took about two
 minutes; the immediate incremental pass read only 213 KB written while the test
 was running.
 
-Claude Code and Claude Desktop access is read-only. On first access macOS may
-ask whether AI Usage can read data from other apps. Granting access persists as
-long as the bundle ID and signing identity remain stable. If Keychain asks about
-`Claude Safe Storage`, choosing **Always Allow** enables background refreshes.
-AI Usage reads only the current access token and never reads or uses the Desktop
-refresh token.
+Access to `~/.claude` and `~/.codex` is read-only. During setup, macOS asks the
+user to choose each enabled assistant's data folder. AI Usage stores a
+security-scoped bookmark so that permission survives later launches, provided
+the bundle ID and signing identity remain stable. It reads only the local
+authentication and numeric usage data required for the dashboard; it never
+modifies assistant files, reads prompt/response text into its index, or sends
+credentials, conversations or usage history to the project maintainers.
 
 At launch, each provider is classified as connected, awaiting permission,
 awaiting login, not installed or temporarily unavailable. Setup controls are

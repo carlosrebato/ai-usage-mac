@@ -125,7 +125,12 @@ public struct UsageDetailedMetrics: View {
                 providerBlock(snapshot)
             }
 
-            UsageTrendFooter(history: history, now: now, language: language)
+            UsageTrendFooter(
+                history: history,
+                now: now,
+                language: language,
+                providers: Set(ordered.map(\.id))
+            )
         }
     }
 
@@ -161,7 +166,7 @@ public struct UsageDetailedMetrics: View {
                                 .font(.system(size: 19, weight: .semibold))
                                 .foregroundStyle(UsageTheme.tertiaryText)
                         }
-                        Text(primaryWindowCaption(snapshot, now: now, language: language))
+                        Text(primaryPeriodLabel(snapshot, language: language))
                             .font(.system(size: 9, weight: .semibold))
                             .tracking(1.15)
                             .foregroundStyle(UsageTheme.mutedText)
@@ -249,34 +254,42 @@ public struct UsageTrendFooter: View {
     public let history: UsageHistory
     public let now: Date
     public let language: AppLanguage
+    public let providers: Set<UsageProviderID>
 
     public init(
         history: UsageHistory,
         now: Date,
-        language: AppLanguage = .english
+        language: AppLanguage = .english,
+        providers: Set<UsageProviderID> = Set(UsageProviderID.allCases)
     ) {
         self.history = history
         self.now = now
         self.language = language
+        self.providers = providers
     }
 
     public var body: some View {
         VStack(spacing: 14) {
             HStack {
-                Text(language.text("TOKENS · LAST 7 DAYS", "TOKENS · ÚLTIMOS 7 DÍAS"))
+                Text(language.text("USAGE · LAST 7 DAYS", "USO · ÚLTIMOS 7 DÍAS"))
                     .font(.system(size: 9, weight: .semibold))
                     .tracking(1.15)
                     .foregroundStyle(UsageTheme.mutedText)
 
                 Spacer()
 
-                legend("Claude", color: UsageTheme.claude)
-                legend("Codex", color: UsageTheme.codex)
+                if providers.contains(.claude) {
+                    legend("Claude", color: UsageTheme.claude)
+                }
+                if providers.contains(.codex) {
+                    legend("Codex", color: UsageTheme.codex)
+                }
             }
 
             UsageTrendChart(
                 days: history.lastSevenDays(relativeTo: now),
-                language: language
+                language: language,
+                providers: providers
             )
             .frame(height: 100)
 
@@ -351,6 +364,7 @@ public struct UsageTrendFooter: View {
 private struct UsageTrendChart: View {
     let days: [UsageHistoryDay]
     let language: AppLanguage
+    let providers: Set<UsageProviderID>
 
     var body: some View {
         Canvas { context, size in
@@ -366,9 +380,11 @@ private struct UsageTrendChart: View {
                 days.compactMap(\.codexTokens).max() ?? 0
             )
             let calloutProvider = UsageProviderID.allCases
-                .filter { (days.last?.tokens(for: $0) ?? 0) > 0 }
+                .filter(providers.contains)
+                .filter { hasSeries(for: $0) && currentValue(for: $0) > 0 }
                 .max {
-                    (days.last?.tokens(for: $0) ?? 0) < (days.last?.tokens(for: $1) ?? 0)
+                    normalizedCurrentValue(for: $0, tokenScaleMaximum: scaleMaximum)
+                        < normalizedCurrentValue(for: $1, tokenScaleMaximum: scaleMaximum)
                 }
 
             drawDottedGuide(in: &context, from: left, to: right, y: top, opacity: 0.13)
@@ -380,28 +396,32 @@ private struct UsageTrendChart: View {
                 opacity: 0.09
             )
 
-            drawSeries(
-                provider: .claude,
-                color: UsageTheme.claude,
-                areaOpacity: 0.22,
-                xPositions: xPositions,
-                baseline: baseline,
-                plotHeight: plotHeight,
-                scaleMaximum: scaleMaximum,
-                showsCallout: calloutProvider == .claude,
-                context: &context
-            )
-            drawSeries(
-                provider: .codex,
-                color: UsageTheme.codex,
-                areaOpacity: 0.18,
-                xPositions: xPositions,
-                baseline: baseline,
-                plotHeight: plotHeight,
-                scaleMaximum: scaleMaximum,
-                showsCallout: calloutProvider == .codex,
-                context: &context
-            )
+            if providers.contains(.claude) {
+                drawSeries(
+                    provider: .claude,
+                    color: UsageTheme.claude,
+                    areaOpacity: 0.22,
+                    xPositions: xPositions,
+                    baseline: baseline,
+                    plotHeight: plotHeight,
+                    scaleMaximum: scaleMaximum,
+                    showsCallout: calloutProvider == .claude,
+                    context: &context
+                )
+            }
+            if providers.contains(.codex) {
+                drawSeries(
+                    provider: .codex,
+                    color: UsageTheme.codex,
+                    areaOpacity: 0.18,
+                    xPositions: xPositions,
+                    baseline: baseline,
+                    plotHeight: plotHeight,
+                    scaleMaximum: scaleMaximum,
+                    showsCallout: calloutProvider == .codex,
+                    context: &context
+                )
+            }
 
             for index in days.indices {
                 let dotRect = CGRect(
@@ -455,13 +475,14 @@ private struct UsageTrendChart: View {
         showsCallout: Bool,
         context: inout GraphicsContext
     ) {
-        guard scaleMaximum > 0,
-              days.contains(where: { ($0.tokens(for: provider) ?? 0) > 0 })
-        else { return }
+        guard hasSeries(for: provider) else { return }
 
         let points = days.indices.map { index -> CGPoint in
-            let value = max(days[index].tokens(for: provider) ?? 0, 0)
-            let normalized = Double(value) / Double(scaleMaximum)
+            let normalized = normalizedValue(
+                for: days[index],
+                provider: provider,
+                tokenScaleMaximum: scaleMaximum
+            )
             return CGPoint(x: xPositions[index], y: baseline - plotHeight * normalized)
         }
 
@@ -490,8 +511,8 @@ private struct UsageTrendChart: View {
         }
 
         for (index, point) in points.enumerated() {
-            let tokens = days[index].tokens(for: provider) ?? 0
-            let isToday = index == days.count - 1 && tokens > 0
+            let value = rawValue(for: days[index], provider: provider)
+            let isToday = index == days.count - 1 && value > 0
             if isToday {
                 let ringRadius: CGFloat = provider == .claude ? 7.5 : 6.8
                 context.stroke(
@@ -518,13 +539,65 @@ private struct UsageTrendChart: View {
 
             if showsCallout, isToday {
                 drawCallout(
-                    text: compactTokens(tokens),
+                    text: calloutText(for: days[index], provider: provider),
                     point: point,
                     color: color,
                     context: &context
                 )
             }
         }
+    }
+
+    private func hasTokenSeries(for provider: UsageProviderID) -> Bool {
+        days.contains { ($0.tokens(for: provider) ?? 0) > 0 }
+    }
+
+    private func hasSeries(for provider: UsageProviderID) -> Bool {
+        hasTokenSeries(for: provider)
+            || days.contains { ($0.percent(for: provider) ?? 0) > 0 }
+    }
+
+    private func rawValue(for day: UsageHistoryDay, provider: UsageProviderID) -> Double {
+        if hasTokenSeries(for: provider) {
+            return Double(max(day.tokens(for: provider) ?? 0, 0))
+        }
+        return max(day.percent(for: provider) ?? 0, 0)
+    }
+
+    private func normalizedValue(
+        for day: UsageHistoryDay,
+        provider: UsageProviderID,
+        tokenScaleMaximum: Int
+    ) -> Double {
+        if hasTokenSeries(for: provider) {
+            guard tokenScaleMaximum > 0 else { return 0 }
+            return rawValue(for: day, provider: provider) / Double(tokenScaleMaximum)
+        }
+        return min(rawValue(for: day, provider: provider) / 100, 1)
+    }
+
+    private func currentValue(for provider: UsageProviderID) -> Double {
+        guard let last = days.last else { return 0 }
+        return rawValue(for: last, provider: provider)
+    }
+
+    private func normalizedCurrentValue(
+        for provider: UsageProviderID,
+        tokenScaleMaximum: Int
+    ) -> Double {
+        guard let last = days.last else { return 0 }
+        return normalizedValue(
+            for: last,
+            provider: provider,
+            tokenScaleMaximum: tokenScaleMaximum
+        )
+    }
+
+    private func calloutText(for day: UsageHistoryDay, provider: UsageProviderID) -> String {
+        if hasTokenSeries(for: provider) {
+            return compactTokens(day.tokens(for: provider) ?? 0)
+        }
+        return "\(Int((day.percent(for: provider) ?? 0).rounded()))%"
     }
 
     private func drawCallout(
@@ -735,25 +808,6 @@ private func primaryPeriodLabel(
         return language.text("WEEK", "SEMANA")
     }
     return language.text("SESSION", "SESIÓN")
-}
-
-private func primaryWindowCaption(
-    _ snapshot: ProviderUsageSnapshot,
-    now: Date,
-    language: AppLanguage
-) -> String {
-    let label = primaryPeriodLabel(snapshot, language: language)
-    guard snapshot.session.usedPercent != nil,
-          let reset = snapshot.session.resetsAt
-    else { return label }
-
-    let windowSeconds = 5 * 60 * 60
-    let remaining = min(max(Int(reset.timeIntervalSince(now)), 0), windowSeconds)
-    let elapsed = windowSeconds - remaining
-    let hours = elapsed / 3_600
-    let minutes = (elapsed % 3_600) / 60
-    let elapsedText = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-    return "\(label) · \(elapsedText) / 5h"
 }
 
 private func compactTokens(_ value: Int) -> String {

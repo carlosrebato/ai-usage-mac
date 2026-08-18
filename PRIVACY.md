@@ -6,12 +6,15 @@ maintainers.
 
 ## Data read locally
 
-- Claude Code session counters under the user's selected/local Claude data.
-- The existing local Claude login solely to request the user's current limits.
-- Codex usage through the locally installed `codex app-server` process.
+- Claude Code session counters and the existing login under the user-authorized
+  `~/.claude` folder.
+- Codex session counters and the existing login under the user-authorized
+  `~/.codex` folder.
 
 macOS may require permission to access another app's data. The user can deny or
-change that access at any time. AI Usage does not modify Claude or Codex files.
+change that access at any time. Access is read-only, and AI Usage does not
+modify Claude or Codex files. Claude Code and Codex are configured separately;
+the user may enable either one or both.
 
 ## Data stored locally
 
@@ -35,5 +38,8 @@ They are not invoices or subscription charges and are always marked with `~`.
 
 ## Network access
 
-AI Usage uses the existing local Claude/Codex authentication flows to retrieve
-usage limits. It does not send analytics or telemetry to the maintainers.
+AI Usage uses the existing local Claude/Codex authentication to retrieve current
+limits directly from the corresponding official Anthropic or OpenAI endpoint.
+Credentials are sent only to their provider. The app does not operate a project
+server and does not send credentials, conversations, analytics, telemetry or
+usage history to the maintainers.

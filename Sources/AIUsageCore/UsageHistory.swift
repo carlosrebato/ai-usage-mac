@@ -27,7 +27,11 @@ public struct UsageHistoryDay: Identifiable, Equatable, Codable, Sendable {
     public var id: Date { date }
 
     public var hasUsage: Bool {
-        activity ?? ((claudePercent ?? 0) > 0 || (codexPercent ?? 0) > 0)
+        activity == true
+            || (claudePercent ?? 0) > 0
+            || (codexPercent ?? 0) > 0
+            || (claudeTokens ?? 0) > 0
+            || (codexTokens ?? 0) > 0
     }
 
     public func percent(for provider: UsageProviderID) -> Double? {
@@ -170,31 +174,41 @@ public struct UsageHistoryCache: Sendable {
         calendar: Calendar = .current
     ) throws -> UsageHistory {
         var history = load()
+        let currentLedgerDay = calendar.startOfDay(
+            for: periodEnd.addingTimeInterval(-1)
+        )
 
         for provider in UsageProviderID.allCases {
-            for index in history.days.indices
-            where periodStart <= history.days[index].date && history.days[index].date < periodEnd {
-                switch provider {
-                case .claude: history.days[index].claudeTokens = nil
-                case .codex: history.days[index].codexTokens = nil
-                }
+            // A missing or empty scan is not proof that the user has no history.
+            // Sandboxed access can be temporarily unavailable while a bookmark is
+            // resolving, so preserve the last known series until real replacement
+            // data is available.
+            guard let providerTotals = totals[provider], !providerTotals.isEmpty else {
+                continue
             }
 
             let normalized = Dictionary(
-                totals[provider, default: [:]].map {
+                providerTotals.map {
                     (calendar.startOfDay(for: $0.key), $0.value)
                 },
                 uniquingKeysWith: +
             )
 
-            for (day, tokens) in normalized where periodStart <= day && day < periodEnd {
+            for (day, tokens) in normalized
+            where periodStart <= day && day < periodEnd && tokens > 0 {
                 let index = history.days.firstIndex {
                     calendar.isDate($0.date, inSameDayAs: day)
                 }
                 if let index {
+                    let existing = history.days[index].tokens(for: provider)
+                    // Closed days are immutable once recorded. The current day is
+                    // monotonic, because an incremental scan may temporarily see
+                    // fewer files than an earlier one.
+                    guard existing == nil || day == currentLedgerDay else { continue }
+                    let stableValue = max(existing ?? 0, tokens)
                     switch provider {
-                    case .claude: history.days[index].claudeTokens = tokens
-                    case .codex: history.days[index].codexTokens = tokens
+                    case .claude: history.days[index].claudeTokens = stableValue
+                    case .codex: history.days[index].codexTokens = stableValue
                     }
                 } else {
                     var entry = UsageHistoryDay(date: day)

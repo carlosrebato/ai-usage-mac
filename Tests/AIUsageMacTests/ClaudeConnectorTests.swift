@@ -4,29 +4,14 @@ import AIUsageCore
 @testable import AIUsageMacServices
 
 private struct EmptyClaudeCredentialLoader: ClaudeCredentialLoading {
+    let permissionRequired: Bool
+
+    init(permissionRequired: Bool = false) {
+        self.permissionRequired = permissionRequired
+    }
+
     func loadCandidates() -> ClaudeCredentialLoad {
-        ClaudeCredentialLoad(credentials: [], permissionRequired: false)
-    }
-}
-
-private final class RecordingDesktopCredentialReader:
-    ClaudeDesktopCredentialReading,
-    @unchecked Sendable
-{
-    private let lock = NSLock()
-    private var storedLoadCount = 0
-
-    var loadCount: Int {
-        lock.withLock { storedLoadCount }
-    }
-
-    func cachedCredential(now _: Date) -> ClaudeCredential? {
-        nil
-    }
-
-    func load(allowInteraction _: Bool, now _: Date) -> ClaudeDesktopCredentialStatus {
-        lock.withLock { storedLoadCount += 1 }
-        return .dataAccessRequired
+        ClaudeCredentialLoad(credentials: [], permissionRequired: permissionRequired)
     }
 }
 
@@ -98,32 +83,26 @@ struct ClaudeConnectorTests {
         #expect(snapshot == nil)
     }
 
-    @Test func automaticRefreshStopsRetryingClaudeDesktopAfterPermissionFailure() async {
-        let desktopReader = RecordingDesktopCredentialReader()
+    @Test func missingBookmarkRequiresExplicitFolderAccess() async {
         let missingStatusline = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathComponent("missing.json")
         let connector = ClaudeOAuthConnector(
-            credentialStore: EmptyClaudeCredentialLoader(),
-            desktopReader: desktopReader,
+            credentialStore: EmptyClaudeCredentialLoader(permissionRequired: true),
             statusline: ClaudeStatuslineReader(fileURL: missingStatusline)
         )
 
-        for _ in 0..<2 {
-            do {
-                _ = try await connector.fetchSnapshot(allowInteraction: false)
-                Issue.record("La actualización automática debería requerir una acción explícita")
-            } catch let error as UsageConnectorError {
-                guard case .permissionRequired = error else {
-                    Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
-                    return
-                }
-            } catch {
+        do {
+            _ = try await connector.fetchSnapshot(allowInteraction: false)
+            Issue.record("La actualización debería requerir acceso a .claude")
+        } catch let error as UsageConnectorError {
+            guard case .permissionRequired = error else {
                 Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
+                return
             }
+        } catch {
+            Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
         }
-
-        #expect(desktopReader.loadCount == 1)
     }
 
     @Test(
@@ -132,7 +111,15 @@ struct ClaudeConnectorTests {
     )
     func probesTheLocalClaudeLogin() async {
         do {
-            let snapshot = try await ClaudeOAuthConnector().fetchSnapshot(allowInteraction: true)
+            let root = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude", isDirectory: true)
+            let connector = ClaudeOAuthConnector(
+                credentialStore: ClaudeCredentialStore(claudeRoot: root),
+                statusline: ClaudeStatuslineReader(
+                    fileURL: root.appendingPathComponent("nspanel-rate-limits.json")
+                )
+            )
+            let snapshot = try await connector.fetchSnapshot(allowInteraction: true)
             #expect(snapshot.id == .claude)
             #expect(snapshot.highestPercent != nil)
         } catch let error as UsageConnectorError {

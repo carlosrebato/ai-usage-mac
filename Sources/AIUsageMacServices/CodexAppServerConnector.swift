@@ -1,255 +1,194 @@
 import AIUsageCore
 import Foundation
 
-struct CodexAppServerConnector: UsageConnector {
-    let providerID = UsageProviderID.codex
-    let timeout: Duration
-    private let executableURL: URL?
+actor CodexAppServerConnector: UsageConnector {
+    nonisolated let providerID = UsageProviderID.codex
 
-    init(executableURL: URL? = CodexExecutableLocator.locate(), timeout: Duration = .seconds(8)) {
-        self.executableURL = executableURL
-        self.timeout = timeout
+    private let credentialStore: any CodexCredentialLoading
+    private let session: URLSession
+    private let endpoint: URL
+    private let now: @Sendable () -> Date
+
+    init(
+        credentialStore: any CodexCredentialLoading = CodexCredentialStore(),
+        session: URLSession = .shared,
+        endpoint: URL = URL(string: "https://chatgpt.com/backend-api/wham/usage")!,
+        now: @escaping @Sendable () -> Date = Date.init
+    ) {
+        self.credentialStore = credentialStore
+        self.session = session
+        self.endpoint = endpoint
+        self.now = now
     }
 
-    func fetchSnapshot(allowInteraction: Bool) async throws -> ProviderUsageSnapshot {
-        guard let executableURL else { throw UsageConnectorError.executableNotFound }
-
-        let response = try await CodexAppServerExchange(
-            executableURL: executableURL,
-            timeout: timeout
-        ).readRateLimits()
-
-        return try CodexRateLimitsNormalizer.snapshot(from: response, observedAt: .now)
-    }
-}
-
-enum CodexExecutableLocator {
-    static func locate(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL? {
-        if let configured = environment["AI_USAGE_CODEX_PATH"], isExecutable(configured) {
-            return URL(fileURLWithPath: configured)
-        }
-
-        let pathCandidates = (environment["PATH"] ?? "")
-            .split(separator: ":")
-            .map { String($0) + "/codex" }
-
-        let candidates = [
-            "/Applications/ChatGPT.app/Contents/Resources/codex",
-            "/Applications/Codex.app/Contents/Resources/codex",
-            "/opt/homebrew/bin/codex",
-            "/usr/local/bin/codex"
-        ] + pathCandidates
-
-        return candidates.first(where: isExecutable).map(URL.init(fileURLWithPath:))
-    }
-
-    private static func isExecutable(_ path: String) -> Bool {
-        FileManager.default.isExecutableFile(atPath: path)
-    }
-}
-
-private final class CodexAppServerExchange: @unchecked Sendable {
-    private let executableURL: URL
-    private let timeout: Duration
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<Data, Error>?
-    private var process: Process?
-    private var buffer = Data()
-    private var finished = false
-
-    init(executableURL: URL, timeout: Duration) {
-        self.executableURL = executableURL
-        self.timeout = timeout
-    }
-
-    func readRateLimits() async throws -> Data {
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                let registered = lock.withLock {
-                    guard !finished else { return false }
-                    self.continuation = continuation
-                    return true
-                }
-                guard registered else {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                start()
-
-                Task { [weak self, timeout] in
-                    do {
-                        try await Task.sleep(for: timeout)
-                        self?.complete(.failure(UsageConnectorError.timedOut))
-                    } catch {
-                        // The exchange completed or its parent task was cancelled.
-                    }
-                }
-            }
-        } onCancel: {
-            complete(.failure(CancellationError()))
-        }
-    }
-
-    private func start() {
-        let process = Process()
-        let input = Pipe()
-        let output = Pipe()
-        let errors = Pipe()
-
-        process.executableURL = executableURL
-        process.arguments = ["app-server", "--stdio"]
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errors
-        process.environment = ProcessInfo.processInfo.environment
-
-        output.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else { return }
-            self?.ingest(data, input: input.fileHandleForWriting)
-        }
-
-        process.terminationHandler = { [weak self] process in
-            guard let self else { return }
-            if process.terminationStatus == 0 {
-                let remaining = output.fileHandleForReading.readDataToEndOfFile()
-                if !remaining.isEmpty {
-                    self.ingest(remaining, input: input.fileHandleForWriting)
-                }
-                if !self.isFinished {
-                    self.complete(.failure(UsageConnectorError.malformedResponse))
-                }
-                return
-            }
-            let errorData = errors.fileHandleForReading.readDataToEndOfFile()
-            let reason = String(data: errorData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            self.complete(.failure(UsageConnectorError.launchFailed(reason ?? "código \(process.terminationStatus)")))
-        }
-
+    func fetchSnapshot(allowInteraction _: Bool) async throws -> ProviderUsageSnapshot {
+        let credential: CodexCredential
         do {
-            lock.withLock { self.process = process }
-            try process.run()
-
-            try write(
-                [
-                    "id": "1",
-                    "method": "initialize",
-                    "params": [
-                        "clientInfo": ["name": "ai-usage-mac", "version": "0.1.0"],
-                        "capabilities": ["experimentalApi": true]
-                    ]
-                ],
-                to: input.fileHandleForWriting
-            )
+            credential = try credentialStore.load()
+        } catch is ProviderDataAccessError {
+            throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
+                "Connect Codex to authorize its .codex folder",
+                "Conecta Codex para autorizar su carpeta .codex"
+            ))
         } catch {
-            complete(.failure(UsageConnectorError.launchFailed(error.localizedDescription)))
+            throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
+                "Sign in to Codex again",
+                "Inicia sesión de nuevo en Codex"
+            ))
+        }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10
+        request.setValue("Bearer \(credential.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(credential.accountID, forHTTPHeaderField: "ChatGPT-Account-ID")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("codex-cli", forHTTPHeaderField: "User-Agent")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .timedOut {
+            throw UsageConnectorError.timedOut
+        } catch {
+            throw UsageConnectorError.serverError(AppLanguage.current.text(
+                "Could not connect to OpenAI",
+                "No se pudo conectar con OpenAI"
+            ))
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw UsageConnectorError.malformedResponse
+        }
+        switch http.statusCode {
+        case 200:
+            return try CodexRateLimitsNormalizer.snapshot(from: data, observedAt: now())
+        case 401, 403:
+            throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
+                "Open Codex to refresh its local session",
+                "Abre Codex para renovar su sesión local"
+            ))
+        case 429:
+            throw UsageConnectorError.rateLimited(retryAfter: Self.retryAfter(from: http, now: now()))
+        default:
+            throw UsageConnectorError.serverError(AppLanguage.current.text(
+                "OpenAI returned status \(http.statusCode)",
+                "OpenAI respondió con estado \(http.statusCode)"
+            ))
         }
     }
 
-    private func write(_ object: [String: Any], to handle: FileHandle) throws {
-        var data = try JSONSerialization.data(withJSONObject: object)
-        data.append(0x0A)
-        try handle.write(contentsOf: data)
+    private static func retryAfter(from response: HTTPURLResponse, now: Date) -> TimeInterval? {
+        guard let raw = response.value(forHTTPHeaderField: "retry-after")?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty
+        else { return nil }
+        if let seconds = TimeInterval(raw), seconds >= 0 { return seconds }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss zzz"
+        return formatter.date(from: raw).map { max(0, $0.timeIntervalSince(now)) }
+    }
+}
+
+struct CodexCredential: Equatable, Sendable {
+    let accessToken: String
+    let accountID: String
+}
+
+protocol CodexCredentialLoading: Sendable {
+    func load() throws -> CodexCredential
+}
+
+struct CodexCredentialStore: CodexCredentialLoading, Sendable {
+    private let dataAccess: ProviderDataAccess?
+    private let directRoot: URL?
+
+    init(dataAccess: ProviderDataAccess = .shared) {
+        self.dataAccess = dataAccess
+        directRoot = nil
     }
 
-    private func ingest(_ data: Data, input: FileHandle) {
-        let lines: [Data] = lock.withLock {
-            buffer.append(data)
-            var completeLines: [Data] = []
-            while let newline = buffer.firstIndex(of: 0x0A) {
-                completeLines.append(buffer[..<newline])
-                buffer.removeSubrange(...newline)
-            }
-            return completeLines
+    init(codexRoot: URL) {
+        dataAccess = nil
+        directRoot = codexRoot
+    }
+
+    func load() throws -> CodexCredential {
+        if let directRoot {
+            return try Self.read(from: directRoot)
         }
-
-        for line in lines where !line.isEmpty {
-            guard
-                let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
-                let id = object["id"].map({ String(describing: $0) })
-            else { continue }
-
-            if id == "1" {
-                if let error = object["error"] as? [String: Any] {
-                    let message = error["message"] as? String ?? "Codex no pudo inicializarse"
-                    complete(.failure(UsageConnectorError.serverError(message)))
-                    return
-                }
-                do {
-                    try write(
-                        ["id": "2", "method": "account/rateLimits/read"],
-                        to: input
-                    )
-                } catch {
-                    complete(.failure(UsageConnectorError.launchFailed(error.localizedDescription)))
-                    return
-                }
-                continue
-            }
-
-            guard id == "2" else { continue }
-            complete(.success(line))
-            return
+        guard let dataAccess else {
+            throw ProviderDataAccessError.accessNotGranted(provider: .codex)
+        }
+        return try dataAccess.withAccess(to: .codex) { root in
+            try Self.read(from: root)
         }
     }
 
-    private func complete(_ result: Result<Data, Error>) {
-        let values: (CheckedContinuation<Data, Error>?, Process?) = lock.withLock {
-            guard !finished else { return (nil, nil) }
-            finished = true
-            let values = (continuation, process)
-            continuation = nil
-            process = nil
-            return values
+    static func parse(_ data: Data) throws -> CodexCredential {
+        let file = try JSONDecoder().decode(AuthFile.self, from: data)
+        guard
+            let tokens = file.tokens,
+            let accessToken = tokens.accessToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !accessToken.isEmpty,
+            let accountID = tokens.accountID?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !accountID.isEmpty
+        else {
+            throw UsageConnectorError.notAuthenticated("Codex auth.json has no ChatGPT session")
         }
-
-        guard let continuation = values.0 else { return }
-        if let output = values.1?.standardOutput as? Pipe {
-            output.fileHandleForReading.readabilityHandler = nil
-        }
-        if values.1?.isRunning == true { values.1?.terminate() }
-        continuation.resume(with: result)
+        return CodexCredential(accessToken: accessToken, accountID: accountID)
     }
 
-    private var isFinished: Bool {
-        lock.withLock { finished }
+    private static func read(from root: URL) throws -> CodexCredential {
+        let data = try Data(contentsOf: root.appendingPathComponent("auth.json"))
+        return try parse(data)
+    }
+}
+
+private struct AuthFile: Decodable {
+    let tokens: AuthTokens?
+}
+
+private struct AuthTokens: Decodable {
+    let accessToken: String?
+    let accountID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case accountID = "account_id"
     }
 }
 
 enum CodexRateLimitsNormalizer {
     static func snapshot(from data: Data, observedAt: Date) throws -> ProviderUsageSnapshot {
-        let response: RPCResponse
+        let response: CodexUsageResponse
         do {
-            response = try JSONDecoder().decode(RPCResponse.self, from: data)
+            response = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
         } catch {
             throw UsageConnectorError.malformedResponse
         }
 
-        if let error = response.error {
-            throw UsageConnectorError.serverError(error.message)
-        }
-
-        guard let limits = response.result?.rateLimits else {
+        guard let limits = response.rateLimit else {
             throw UsageConnectorError.missingUsageWindows
         }
+        let windows = [limits.primaryWindow, limits.secondaryWindow].compactMap { $0 }
+        let weekly = windows.first { ($0.limitWindowSeconds ?? 0) >= 7 * 24 * 60 * 60 }
+        let session = weekly == nil
+            ? limits.primaryWindow
+            : windows.first { $0 != weekly }
+        let fallbackWeekly = weekly
+            ?? (limits.primaryWindow == session ? limits.secondaryWindow : limits.primaryWindow)
 
-        let windows = [limits.primary, limits.secondary].compactMap { $0 }
-        let weekly = windows.first { ($0.windowDurationMins ?? 0) >= 7 * 24 * 60 }
-        let session: RateLimitWindow?
-
-        if weekly != nil {
-            session = windows.first { $0 != weekly }
-        } else {
-            session = limits.primary
-        }
-
-        let fallbackWeekly = weekly ?? (limits.primary == session ? limits.secondary : limits.primary)
         guard session?.usedPercent != nil || fallbackWeekly?.usedPercent != nil else {
             throw UsageConnectorError.missingUsageWindows
         }
 
-        let plan = limits.planType?.capitalized
+        let plan = response.planType?.capitalized
         return ProviderUsageSnapshot(
             id: .codex,
             session: usageWindow(session),
@@ -263,35 +202,42 @@ enum CodexRateLimitsNormalizer {
         )
     }
 
-    private static func usageWindow(_ window: RateLimitWindow?) -> UsageWindow {
+    private static func usageWindow(_ window: CodexRateLimitWindow?) -> UsageWindow {
         UsageWindow(
             usedPercent: window?.usedPercent.map { min(max($0, 0), 100) },
-            resetsAt: window?.resetsAt.map { Date(timeIntervalSince1970: $0) }
+            resetsAt: window?.resetAt.map { Date(timeIntervalSince1970: $0) }
         )
     }
 }
 
-private struct RPCResponse: Decodable {
-    let result: RPCResult?
-    let error: RPCError?
-}
-
-private struct RPCResult: Decodable {
-    let rateLimits: RateLimits?
-}
-
-private struct RPCError: Decodable {
-    let message: String
-}
-
-private struct RateLimits: Decodable {
-    let primary: RateLimitWindow?
-    let secondary: RateLimitWindow?
+private struct CodexUsageResponse: Decodable {
     let planType: String?
+    let rateLimit: CodexRateLimit?
+
+    enum CodingKeys: String, CodingKey {
+        case planType = "plan_type"
+        case rateLimit = "rate_limit"
+    }
 }
 
-private struct RateLimitWindow: Decodable, Equatable {
+private struct CodexRateLimit: Decodable {
+    let primaryWindow: CodexRateLimitWindow?
+    let secondaryWindow: CodexRateLimitWindow?
+
+    enum CodingKeys: String, CodingKey {
+        case primaryWindow = "primary_window"
+        case secondaryWindow = "secondary_window"
+    }
+}
+
+private struct CodexRateLimitWindow: Decodable, Equatable {
     let usedPercent: Double?
-    let windowDurationMins: Double?
-    let resetsAt: Double?
+    let limitWindowSeconds: Double?
+    let resetAt: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case usedPercent = "used_percent"
+        case limitWindowSeconds = "limit_window_seconds"
+        case resetAt = "reset_at"
+    }
 }

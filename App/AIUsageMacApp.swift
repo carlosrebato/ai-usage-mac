@@ -18,16 +18,20 @@ struct AIUsageMacApp: App {
             OnboardingView()
                 .environmentObject(appDelegate.store)
                 .environmentObject(appDelegate.assistantSetupContext)
+                .environmentObject(appDelegate.providerSelection)
         }
-        .defaultSize(width: 480, height: 560)
+        .defaultSize(width: 520, height: 590)
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .defaultLaunchBehavior(onboardingCompleted ? .suppressed : .presented)
+        .defaultLaunchBehavior(shouldPresentOnboarding ? .presented : .suppressed)
 
-        Window("AI Usage", id: "dashboard") {
-            DashboardView()
+        Window("Manage AI assistants", id: "assistant-management") {
+            OnboardingView()
                 .environmentObject(appDelegate.store)
+                .environmentObject(appDelegate.assistantSetupContext)
+                .environmentObject(appDelegate.providerSelection)
         }
-        .defaultSize(width: 432, height: 760)
+        .defaultSize(width: 520, height: 440)
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
@@ -35,8 +39,9 @@ struct AIUsageMacApp: App {
         Window("AI Usage HUD", id: "floating") {
             FloatingPanelView()
                 .environmentObject(appDelegate.store)
+                .environmentObject(appDelegate.providerSelection)
         }
-        .defaultSize(width: 256, height: 256)
+        .defaultSize(width: FloatingPanelView.size.width, height: FloatingPanelView.size.height)
         .windowStyle(.plain)
         .windowResizability(.contentSize)
         .windowLevel(.floating)
@@ -46,6 +51,7 @@ struct AIUsageMacApp: App {
             SettingsView()
                 .environmentObject(appDelegate.store)
                 .environmentObject(appDelegate.assistantSetupContext)
+                .environmentObject(appDelegate.providerSelection)
         }
         .windowResizability(.contentSize)
     }
@@ -58,18 +64,32 @@ struct AIUsageMacApp: App {
             language.text("Manage AI assistants", "Gestionar asistentes de IA")
         }
     }
+
+    private var shouldPresentOnboarding: Bool {
+#if DEBUG
+        if CommandLine.arguments.contains("--verify-status-popover")
+            || CommandLine.arguments.contains("--verify-claude-metrics-picker") {
+            return false
+        }
+#endif
+        return !onboardingCompleted
+            || !appDelegate.providerSelection.hasActiveProvider
+    }
 }
 
 @MainActor
 final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
     let store = UsageStore()
     let assistantSetupContext = AssistantSetupContext()
+    let providerSelection = ProviderSelectionStore()
+    private let updater = AppUpdater.shared
     private var statusBarController: NativeStatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusBarController = NativeStatusBarController(
             store: store,
-            assistantSetupContext: assistantSetupContext
+            assistantSetupContext: assistantSetupContext,
+            providerSelection: providerSelection
         )
         runSmokeTestIfRequested()
     }
@@ -77,39 +97,43 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
     private func runSmokeTestIfRequested() {
         let arguments = CommandLine.arguments
         guard arguments.contains("--smoke-test") else { return }
-        let reportURL: URL = {
+        let reportURL: URL? = {
             guard let index = arguments.firstIndex(of: "--smoke-report"),
                   arguments.indices.contains(index + 1)
-            else {
-                return FileManager.default.temporaryDirectory
-                    .appendingPathComponent("ai-usage-smoke-report.json")
-            }
+            else { return nil }
             return URL(fileURLWithPath: arguments[index + 1])
         }()
 
         Task { @MainActor [store] in
             await store.refreshWhenIdle(force: true, allowInteraction: false)
-            let providers: [[String: Any]] = UsageProviderID.allCases.map { provider in
+            let enabledProviders = Array(providerSelection.activeProviders)
+            let providers: [[String: Any]] = enabledProviders.map { provider in
                 let snapshot = store.snapshots.first { $0.id == provider }
                 let status = store.connectionStatuses.first { $0.id == provider }
                 return [
                     "provider": provider.rawValue,
                     "connection": status.map { Self.smokePhase($0.phase) } ?? "missing",
+                    "message": status?.message ?? snapshot?.message ?? "missing",
                     "percent": snapshot?.highestPercent ?? NSNull(),
                     "source": snapshot?.source.rawValue ?? "missing",
                     "observedAt": snapshot?.observedAt.timeIntervalSince1970 ?? 0
                 ]
             }
-            let permissionsPersisted = providers.allSatisfy {
-                guard let connection = $0["connection"] as? String else { return false }
-                return !connection.hasPrefix("action-required") && connection != "missing"
+            let permissionsPersisted = !enabledProviders.isEmpty && enabledProviders.allSatisfy {
+                ProviderDataAccess.shared.hasUsableAccess(
+                    for: $0 == .claude ? .claude : .codex
+                )
             }
             let hasUsageData = providers.allSatisfy { !($0["percent"] is NSNull) }
-            let passed = permissionsPersisted && hasUsageData
+            let hasLiveData = providers.allSatisfy {
+                $0["source"] as? String == UsageSource.live.rawValue
+            }
+            let passed = permissionsPersisted && hasUsageData && hasLiveData
             let report: [String: Any] = [
                 "passed": passed,
                 "permissionsPersisted": permissionsPersisted,
                 "hasUsageData": hasUsageData,
+                "hasLiveData": hasLiveData,
                 "bundleIdentifier": Bundle.main.bundleIdentifier ?? "unknown",
                 "providers": providers,
                 "timestamp": Date.now.timeIntervalSince1970
@@ -119,7 +143,12 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
                     withJSONObject: report,
                     options: [.prettyPrinted, .sortedKeys]
                 )
-                try data.write(to: reportURL, options: .atomic)
+                if let reportURL {
+                    try data.write(to: reportURL, options: .atomic)
+                } else {
+                    FileHandle.standardOutput.write(data)
+                    FileHandle.standardOutput.write(Data("\n".utf8))
+                }
             } catch {
                 fputs("AI Usage smoke report failed: \(error)\n", stderr)
             }
@@ -138,20 +167,27 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @MainActor
-private final class NativeStatusBarController: NSObject {
+private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private let store: UsageStore
     private let assistantSetupContext: AssistantSetupContext
+    private let providerSelection: ProviderSelectionStore
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
     private var minuteTimer: AnyCancellable?
-    private var dashboardWindow: NSWindow?
     private var floatingWindow: NSPanel?
     private var settingsWindow: NSWindow?
+    private var localDismissMonitor: Any?
+    private var globalDismissMonitor: Any?
 
-    init(store: UsageStore, assistantSetupContext: AssistantSetupContext) {
+    init(
+        store: UsageStore,
+        assistantSetupContext: AssistantSetupContext,
+        providerSelection: ProviderSelectionStore
+    ) {
         self.store = store
         self.assistantSetupContext = assistantSetupContext
+        self.providerSelection = providerSelection
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         configureStatusItem()
@@ -160,14 +196,6 @@ private final class NativeStatusBarController: NSObject {
         applyAutomaticRefreshPreference()
         updateStatusItem()
 #if DEBUG
-        if CommandLine.arguments.contains("--verify-status-menu") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                self?.showDashboard()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                    self?.showContextMenu()
-                }
-            }
-        }
         if CommandLine.arguments.contains("--verify-status-popover") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 guard let self, let button = self.statusItem.button else { return }
@@ -179,6 +207,33 @@ private final class NativeStatusBarController: NSObject {
                 self?.showSettings()
             }
         }
+        if CommandLine.arguments.contains("--verify-claude-metrics-picker") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                Task { _ = try? await ClaudeCodeMetricsAccessPicker.requestAccess() }
+            }
+        }
+        if CommandLine.arguments.contains("--verify-detach") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.showFloatingWindow()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    let isVisible = self?.floatingWindow?.isVisible == true
+                    fputs("AI Usage detach visible: \(isVisible)\n", stderr)
+                    if let reportIndex = CommandLine.arguments.firstIndex(
+                        of: "--verify-detach-report"
+                    ), CommandLine.arguments.indices.contains(reportIndex + 1) {
+                        let reportURL = URL(
+                            fileURLWithPath: CommandLine.arguments[reportIndex + 1]
+                        )
+                        try? "visible=\(isVisible)\n".write(
+                            to: reportURL,
+                            atomically: true,
+                            encoding: .utf8
+                        )
+                        NSApplication.shared.terminate(nil)
+                    }
+                }
+            }
+        }
 #endif
     }
 
@@ -186,7 +241,9 @@ private final class NativeStatusBarController: NSObject {
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(statusItemClicked(_:))
-        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        // Handle the press before a transient popover auto-closes on mouse-up.
+        // Otherwise the same click can immediately reopen it and appear ignored.
+        button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
     }
@@ -194,17 +251,18 @@ private final class NativeStatusBarController: NSObject {
     private func configurePopover() {
         let darkAppearance = NSAppearance(named: .darkAqua)
         popover.behavior = .transient
+        popover.delegate = self
         popover.animates = false
         popover.appearance = darkAppearance
         popover.hasFullSizeContent = true
         popover.contentSize = NSSize(width: 392, height: 260)
         let hostingController = NSHostingController(
             rootView: MenuBarView(
-                openDashboard: { [weak self] in self?.showDashboard() },
                 detach: { [weak self] in self?.showFloatingWindow() },
                 settings: { [weak self] in self?.showSettings() }
             )
             .environmentObject(store)
+            .environmentObject(providerSelection)
         )
         hostingController.view.appearance = darkAppearance
         popover.contentViewController = hostingController
@@ -224,6 +282,11 @@ private final class NativeStatusBarController: NSObject {
             }
             .store(in: &cancellables)
 
+        providerSelection.$activeProviders
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusItem() }
+            .store(in: &cancellables)
+
         minuteTimer = Timer.publish(every: 60, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.updateStatusItem() }
@@ -237,7 +300,7 @@ private final class NativeStatusBarController: NSObject {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        if NSApp.currentEvent?.type == .rightMouseUp {
+        if NSApp.currentEvent?.type == .rightMouseDown {
             showContextMenu()
         } else {
             togglePopover(relativeTo: sender)
@@ -249,7 +312,49 @@ private final class NativeStatusBarController: NSObject {
             popover.performClose(nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            installPopoverDismissMonitors()
         }
+    }
+
+    private func installPopoverDismissMonitors() {
+        removePopoverDismissMonitors()
+        let mask: NSEvent.EventTypeMask = [
+            .leftMouseDown,
+            .rightMouseDown,
+            .otherMouseDown
+        ]
+        localDismissMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) {
+            [weak self] event in
+            guard let self, self.popover.isShown else { return event }
+            let popoverWindow = self.popover.contentViewController?.view.window
+            let statusWindow = self.statusItem.button?.window
+            guard event.window !== popoverWindow, event.window !== statusWindow else {
+                return event
+            }
+            self.popover.performClose(nil)
+            return event
+        }
+        globalDismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) {
+            [weak self] _ in
+            DispatchQueue.main.async {
+                self?.popover.performClose(nil)
+            }
+        }
+    }
+
+    private func removePopoverDismissMonitors() {
+        if let localDismissMonitor {
+            NSEvent.removeMonitor(localDismissMonitor)
+            self.localDismissMonitor = nil
+        }
+        if let globalDismissMonitor {
+            NSEvent.removeMonitor(globalDismissMonitor)
+            self.globalDismissMonitor = nil
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        removePopoverDismissMonitors()
     }
 
     private func showContextMenu() {
@@ -325,6 +430,7 @@ private final class NativeStatusBarController: NSObject {
             rootView: SettingsView()
                 .environmentObject(store)
                 .environmentObject(assistantSetupContext)
+                .environmentObject(providerSelection)
         )
         let window = NSWindow(contentViewController: controller)
         window.title = AppLanguage.current.text("AI Usage Settings", "Ajustes de AI Usage")
@@ -337,37 +443,17 @@ private final class NativeStatusBarController: NSObject {
         settingsWindow = window
     }
 
-    private func showDashboard() {
-        popover.performClose(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        if let dashboardWindow {
-            dashboardWindow.makeKeyAndOrderFront(nil)
-            return
-        }
-        let controller = NSHostingController(
-            rootView: DashboardView().environmentObject(store)
-        )
-        let window = NSWindow(contentViewController: controller)
-        window.title = "AI Usage"
-        window.styleMask = [.titled, .closable, .miniaturizable]
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.setContentSize(NSSize(width: 432, height: 760))
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        dashboardWindow = window
-    }
-
     private func showFloatingWindow() {
         popover.performClose(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
         if let floatingWindow {
-            floatingWindow.makeKeyAndOrderFront(nil)
+            presentFloatingWindow(floatingWindow)
             return
         }
 
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 256, height: 256),
+        let panel = AIUsageFloatingPanel(
+            contentRect: NSRect(origin: .zero, size: FloatingPanelView.size),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -377,16 +463,24 @@ private final class NativeStatusBarController: NSObject {
                 self?.floatingWindow?.orderOut(nil)
             })
             .environmentObject(store)
+            .environmentObject(providerSelection)
         )
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.level = .floating
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
         panel.center()
-        panel.makeKeyAndOrderFront(nil)
         floatingWindow = panel
+        presentFloatingWindow(panel)
+    }
+
+    private func presentFloatingWindow(_ panel: NSPanel) {
+        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
     }
 
     private func updateStatusItem() {
@@ -398,20 +492,23 @@ private final class NativeStatusBarController: NSObject {
         let showResetTimes = UserDefaults.standard.bool(
             forKey: AppPreferenceKey.showResetTimesInMenuBar
         )
-        let snapshots = UsageProviderID.allCases.compactMap { provider in
+        let snapshots = UsageProviderID.allCases
+            .filter(providerSelection.isActive)
+            .compactMap { provider in
             store.snapshots.first {
                 $0.id == provider && $0.menuBarPercent != nil
             }
-        }
+            }
 
         guard showPercentage, !snapshots.isEmpty else {
-            let image = NSImage(
-                systemSymbolName: "chart.bar.fill",
-                accessibilityDescription: "AI Usage"
-            )
-            image?.isTemplate = true
+            let image = (NSImage(named: "AIUsageBrand")
+                ?? NSApplication.shared.applicationIconImage)?.copy() as? NSImage
+            image?.size = NSSize(width: 18, height: 18)
+            image?.isTemplate = false
             button.image = image
-            button.toolTip = language.text("AI Usage has no data", "AI Usage sin datos")
+            button.toolTip = snapshots.isEmpty
+                ? language.text("AI Usage has no data", "AI Usage sin datos")
+                : "AI Usage"
             statusItem.length = NSStatusItem.squareLength
             return
         }
@@ -460,6 +557,10 @@ private final class NativeStatusBarController: NSObject {
             relativeTo: .now
         ).replacingOccurrences(of: " ", with: "")
     }
+}
+
+private final class AIUsageFloatingPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 
 private struct MenuBarUsageLabel: View {

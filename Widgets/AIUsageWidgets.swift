@@ -25,7 +25,9 @@ private struct UsageWidgetProvider: TimelineProvider {
 
     private func entry(usePreviewIfEmpty: Bool) -> UsageWidgetEntry {
         let cached = UsageSnapshotCache().load()
-        let snapshots = UsageProviderID.allCases.compactMap { cached[$0] }
+        let snapshots = UsageProviderID.allCases
+            .filter { ProviderVisibilityPreferences.isVisible($0) }
+            .compactMap { cached[$0] }
         return UsageWidgetEntry(
             date: .now,
             snapshots: snapshots.isEmpty && usePreviewIfEmpty ? Self.previewSnapshots : snapshots

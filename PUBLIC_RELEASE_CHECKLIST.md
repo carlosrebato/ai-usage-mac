@@ -54,7 +54,8 @@ logs and configuration must not become part of the release.
   changelog.
 - [ ] Protect signing/notarization secrets in a GitHub environment with manual
   approval; never expose them to pull-request workflows.
-- [ ] Add “Check for Updates”; initially it may open the latest GitHub Release.
+- [x] Add signed automatic updates with Sparkle plus a manual “Check for Updates”.
+- [ ] Publish `appcast.xml` with every signed and notarized GitHub Release.
 
 ## 5. Product readiness
 
