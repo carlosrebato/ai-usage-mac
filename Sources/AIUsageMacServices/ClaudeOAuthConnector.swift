@@ -50,6 +50,10 @@ actor ClaudeOAuthConnector: UsageConnector {
             }
         }
 
+        if let credential = try await ClaudeAccountOAuth.credential(now: now()) {
+            return try await fetchUsage(using: [credential])
+        }
+
         if let credential = desktopReader.cachedCredential(now: now()) {
             return try await fetchUsage(using: [credential])
         }
@@ -58,9 +62,9 @@ actor ClaudeOAuthConnector: UsageConnector {
         case .available(let credential):
             return try await fetchUsage(using: [credential])
         case .dataAccessRequired:
-            throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
-                "Connect Claude to authorize its local data folder",
-                "Conecta Claude para autorizar su carpeta de datos local"
+            throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
+                "Sign in with Claude. No Terminal or folder access is required.",
+                "Inicia sesión con Claude. No hace falta Terminal ni acceso a carpetas."
             ))
         case .keychainPermissionRequired:
             throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
@@ -69,8 +73,8 @@ actor ClaudeOAuthConnector: UsageConnector {
             ))
         case .stale:
             throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
-                "Run `claude auth login` in Terminal to refresh Claude Code",
-                "Ejecuta `claude auth login` en Terminal para renovar Claude Code"
+                "Sign in securely with Claude in your browser",
+                "Inicia sesión de forma segura con Claude en el navegador"
             ))
         case .invalid:
             throw UsageConnectorError.serverError(AppLanguage.current.text(
@@ -78,15 +82,9 @@ actor ClaudeOAuthConnector: UsageConnector {
                 "No se pudo leer la sesión local de Claude"
             ))
         case .notFound:
-            if load.permissionRequired {
-                throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
-                    "Connect Claude to authorize its local data folder",
-                    "Conecta Claude para autorizar su carpeta de datos local"
-                ))
-            }
             throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
-                "Run `claude auth login` once in Terminal. The button copies the command.",
-                "Ejecuta `claude auth login` una vez en Terminal. El botón copia el comando."
+                "Sign in with Claude. AI Usage never sees your password.",
+                "Inicia sesión con Claude. AI Usage nunca ve tu contraseña."
             ))
         }
     }
@@ -240,7 +238,7 @@ struct ClaudeCredentialStore: ClaudeCredentialLoading, Sendable {
             return ClaudeCredentialLoad(credentials: [], permissionRequired: true)
         }
         do {
-            let credential = try dataAccess.withAccess(to: .claude) { root in
+            let credential = try dataAccess.withAccess(to: .claudeCode) { root in
                 Self.readFile(in: root)
             }
             return ClaudeCredentialLoad(
@@ -346,7 +344,7 @@ struct ClaudeStatuslineReader: Sendable {
 
     func readFresh(now: Date) -> ProviderUsageSnapshot? {
         if let fileURL { return read(fileURL, now: now) }
-        return try? dataAccess?.withAccess(to: .claude) { root in
+        return try? dataAccess?.withAccess(to: .claudeCode) { root in
             read(root.appendingPathComponent("nspanel-rate-limits.json"), now: now)
         }
     }

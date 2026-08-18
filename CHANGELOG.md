@@ -2,6 +2,16 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.1-beta.4 — 2026-08-18
+
+- Replace the Terminal-based Claude Code login with a native browser OAuth flow
+  using PKCE and an automatic localhost callback.
+- Store the resulting Claude token in AI Usage's own Keychain item; the app
+  never receives the user's password and no code needs to be copied or pasted.
+- Ship the signed app with its explicit Keychain access group and verify a real
+  write/read/delete cycle before a release can pass the signed smoke test.
+- Keep existing local Claude Code and Claude Desktop sessions as fallbacks.
+
 ## 0.1.1-beta.3 — 2026-08-18
 
 - Replace the misleading Claude Desktop launch action with an explicit Claude

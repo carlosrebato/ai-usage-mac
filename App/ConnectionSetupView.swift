@@ -11,6 +11,8 @@ struct ConnectionSetupView: View {
     let retry: () -> Void
     let grantClaudeDesktopAccess: () -> Void
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
+    @State private var isSigningInToClaude = false
+    @State private var signInError: String?
 
     private var pending: [ProviderConnectionStatus] {
         statuses.filter { status in
@@ -41,8 +43,8 @@ struct ConnectionSetupView: View {
                     connectionRow(status)
                 }
 
-                if let errorMessage {
-                    Text(errorMessage)
+                if let visibleError = signInError ?? errorMessage {
+                    Text(visibleError)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(UsageTheme.red)
                 }
@@ -91,7 +93,7 @@ struct ConnectionSetupView: View {
         case .grantPermission: language.text("Grant access", "Dar acceso")
         case .signIn:
             provider == .claude
-                ? language.text("Copy login command", "Copiar comando de acceso")
+                ? language.text("Sign in with Claude", "Iniciar sesión con Claude")
                 : language.text("Open Codex", "Abrir Codex")
         case .install: language.text("Install", "Instalar")
         case .retry: language.text("Retry", "Reintentar")
@@ -105,7 +107,22 @@ struct ConnectionSetupView: View {
         case .grantPermission, .retry:
             retry()
         case .signIn:
-            ProviderAppLauncher.openSignIn(for: provider)
+            if provider == .claude {
+                guard !isSigningInToClaude else { return }
+                isSigningInToClaude = true
+                signInError = nil
+                Task { @MainActor in
+                    defer { isSigningInToClaude = false }
+                    do {
+                        try await ClaudeBrowserLogin.signIn()
+                        retry()
+                    } catch {
+                        signInError = error.localizedDescription
+                    }
+                }
+            } else {
+                ProviderAppLauncher.open(provider, installationFallback: false)
+            }
         case .install:
             ProviderAppLauncher.open(provider, installationFallback: true)
         }
@@ -113,25 +130,6 @@ struct ConnectionSetupView: View {
 }
 
 enum ProviderAppLauncher {
-    static func openSignIn(for provider: UsageProviderID) {
-        guard provider == .claude else {
-            open(provider, installationFallback: false)
-            return
-        }
-
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString("claude auth login", forType: .string)
-
-        guard let terminal = NSWorkspace.shared.urlForApplication(
-            withBundleIdentifier: "com.apple.Terminal"
-        ) else { return }
-        NSWorkspace.shared.openApplication(
-            at: terminal,
-            configuration: NSWorkspace.OpenConfiguration()
-        )
-    }
-
     static func open(_ provider: UsageProviderID, installationFallback: Bool) {
         if !installationFallback, openInstalledApplication(provider) { return }
         guard let url = downloadURL(provider) else { return }

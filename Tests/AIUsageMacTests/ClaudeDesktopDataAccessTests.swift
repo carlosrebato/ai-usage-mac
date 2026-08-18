@@ -20,7 +20,7 @@ struct ClaudeDesktopDataAccessTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            .appendingPathComponent(".claude", isDirectory: true)
+            .appendingPathComponent("Claude", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
         let access = ClaudeDesktopDataAccess(
@@ -39,7 +39,7 @@ struct ClaudeDesktopDataAccessTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            .appendingPathComponent(".claude", isDirectory: true)
+            .appendingPathComponent("Claude", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
         let firstSession = ClaudeDesktopDataAccess(defaults: defaults, bookmarkCoder: PathBookmarkCoder())

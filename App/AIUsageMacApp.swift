@@ -91,7 +91,24 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
             assistantSetupContext: assistantSetupContext,
             providerSelection: providerSelection
         )
+        runKeychainSmokeTestIfRequested()
         runSmokeTestIfRequested()
+    }
+
+    private func runKeychainSmokeTestIfRequested() {
+        guard CommandLine.arguments.contains("--verify-oauth-keychain") else { return }
+        let result: [String: Any]
+        do {
+            try ClaudeAccountOAuth.verifyKeychainAccess()
+            result = ["keychainAccess": true]
+        } catch {
+            result = ["keychainAccess": false, "error": error.localizedDescription]
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]) {
+            FileHandle.standardOutput.write(data)
+            FileHandle.standardOutput.write(Data("\n".utf8))
+        }
+        NSApplication.shared.terminate(nil)
     }
 
     private func runSmokeTestIfRequested() {
