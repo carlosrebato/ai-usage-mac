@@ -44,7 +44,9 @@ struct UsageHistoryTests {
         )
         #expect(activityHistory.days[0].activity == true)
         #expect(activityHistory.days[1].activity == false)
-        #expect(activityHistory.currentStreak(relativeTo: secondDay, calendar: calendar) == 0)
+        // A partial local-log scan cannot contradict usage already recorded by
+        // the provider quota history.
+        #expect(activityHistory.currentStreak(relativeTo: secondDay, calendar: calendar) == 2)
 
         let tokenHistory = try cache.applyingDailyTokens(
             [
@@ -66,9 +68,35 @@ struct UsageHistoryTests {
             periodEnd: secondDay.addingTimeInterval(24 * 60 * 60),
             calendar: calendar
         )
-        #expect(rebuiltHistory.days[0].claudeTokens == nil)
-        #expect(rebuiltHistory.days[0].codexTokens == nil)
-        #expect(rebuiltHistory.days[1].codexTokens == 900)
+        #expect(rebuiltHistory.days[0].claudeTokens == 1_250)
+        #expect(rebuiltHistory.days[0].codexTokens == 800)
+        #expect(rebuiltHistory.days[1].codexTokens == 2_400)
+
+        let growingCurrentDay = try cache.applyingDailyTokens(
+            [.codex: [firstDay: 1_200, secondDay: 3_000]],
+            periodStart: firstDay,
+            periodEnd: secondDay.addingTimeInterval(24 * 60 * 60),
+            calendar: calendar
+        )
+        #expect(growingCurrentDay.days[0].codexTokens == 800)
+        #expect(growingCurrentDay.days[1].codexTokens == 3_000)
+
+        let shrinkingCurrentDay = try cache.applyingDailyTokens(
+            [.codex: [secondDay: 1_000]],
+            periodStart: firstDay,
+            periodEnd: secondDay.addingTimeInterval(24 * 60 * 60),
+            calendar: calendar
+        )
+        #expect(shrinkingCurrentDay.days[1].codexTokens == 3_000)
+
+        let emptyScanHistory = try cache.applyingDailyTokens(
+            [.claude: [:], .codex: [:]],
+            periodStart: firstDay,
+            periodEnd: secondDay.addingTimeInterval(24 * 60 * 60),
+            calendar: calendar
+        )
+        #expect(emptyScanHistory.days[0].claudeTokens == 1_250)
+        #expect(emptyScanHistory.days[1].codexTokens == 3_000)
     }
 
     private func snapshot(

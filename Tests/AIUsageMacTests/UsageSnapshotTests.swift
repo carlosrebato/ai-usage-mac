@@ -3,6 +3,50 @@ import Testing
 @testable import AIUsageCore
 
 struct UsageSnapshotTests {
+    @Test func freshOnboardingSelectsNoAssistantUntilTheUserChoosesOne() {
+        let suite = "ProviderVisibility.fresh.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        ProviderVisibilityPreferences.migrateIfNeeded(
+            onboardingCompleted: false,
+            in: defaults
+        )
+
+        #expect(!ProviderVisibilityPreferences.isVisible(.claude, in: defaults))
+        #expect(!ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
+    }
+
+    @Test func existingUsersKeepBothAssistantsVisibleDuringMigration() {
+        let suite = "ProviderVisibility.existing.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        ProviderVisibilityPreferences.migrateIfNeeded(
+            onboardingCompleted: true,
+            in: defaults
+        )
+
+        #expect(ProviderVisibilityPreferences.isVisible(.claude, in: defaults))
+        #expect(ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
+    }
+
+    @Test func anExplicitAssistantChoiceSurvivesMigration() {
+        let suite = "ProviderVisibility.choice.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        ProviderVisibilityPreferences.setVisible(true, for: .claude, in: defaults)
+        ProviderVisibilityPreferences.setVisible(false, for: .codex, in: defaults)
+
+        ProviderVisibilityPreferences.migrateIfNeeded(
+            onboardingCompleted: true,
+            in: defaults
+        )
+
+        #expect(ProviderVisibilityPreferences.isVisible(.claude, in: defaults))
+        #expect(!ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
+    }
+
     @Test func severityThresholdsMatchTheExistingDesign() {
         #expect(UsageSeverity.forPercent(nil) == .unavailable)
         #expect(UsageSeverity.forPercent(69) == .normal)

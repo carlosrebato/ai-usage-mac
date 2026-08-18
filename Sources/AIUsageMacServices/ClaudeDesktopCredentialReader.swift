@@ -1,10 +1,10 @@
 import AIUsageCore
 import CommonCrypto
 import CryptoKit
-import Dispatch
 import Foundation
 import LocalAuthentication
 import Security
+import SQLite3
 
 enum ClaudeDesktopCredentialStatus: Equatable, Sendable {
     case available(ClaudeCredential)
@@ -29,6 +29,7 @@ final class ClaudeDesktopCredentialReader: ClaudeDesktopCredentialReading, @unch
     private let directDataRoot: URL?
     private let dataAccess: ClaudeDesktopDataAccess?
     private let lock = NSLock()
+    private let keychainLock = NSLock()
     private var cachedKey: Data?
     private var memoryCredential: ClaudeCredential?
 
@@ -214,6 +215,11 @@ final class ClaudeDesktopCredentialReader: ClaudeDesktopCredentialReading, @unch
     }
 
     private func safeStorageKey(allowInteraction: Bool) throws -> Data? {
+        // Multiple refreshes can overlap during launch. Serializing the lookup
+        // prevents macOS from presenting duplicate Claude Safe Storage dialogs.
+        keychainLock.lock()
+        defer { keychainLock.unlock() }
+
         if let cached = lock.withLock({ cachedKey }) { return cached }
 
         var query: [String: Any] = [
@@ -292,28 +298,33 @@ final class ClaudeDesktopCredentialReader: ClaudeDesktopCredentialReading, @unch
         FROM cookies WHERE name = 'lastActiveOrg' AND host_key = '\(escapedHost)'
         ORDER BY last_update_utc DESC LIMIT 1;
         """
-        let process = Process()
-        let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = ["-readonly", database.path, sql]
-        process.standardOutput = output
-        process.standardError = Pipe()
-        let finished = DispatchSemaphore(value: 0)
-        process.terminationHandler = { _ in finished.signal() }
-        do {
-            try process.run()
-            guard finished.wait(timeout: .now() + .seconds(2)) == .success else {
-                if process.isRunning { process.terminate() }
-                _ = finished.wait(timeout: .now() + .milliseconds(250))
-                return nil
-            }
-            guard process.terminationStatus == 0 else { return nil }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            let value = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return value?.isEmpty == false ? value : nil
-        } catch {
+        var databaseHandle: OpaquePointer?
+        guard sqlite3_open_v2(
+            database.path,
+            &databaseHandle,
+            SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX,
+            nil
+        ) == SQLITE_OK, let databaseHandle else {
+            if let databaseHandle { sqlite3_close(databaseHandle) }
             return nil
         }
+        defer { sqlite3_close(databaseHandle) }
+        sqlite3_busy_timeout(databaseHandle, 2_000)
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(databaseHandle, sql, -1, &statement, nil) == SQLITE_OK,
+              let statement
+        else {
+            if let statement { sqlite3_finalize(statement) }
+            return nil
+        }
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_step(statement) == SQLITE_ROW,
+              let bytes = sqlite3_column_text(statement, 0)
+        else { return nil }
+        let value = String(cString: bytes).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 
     private func decodedCache(_ stored: Any?, key: Data) throws -> [String: Any]? {

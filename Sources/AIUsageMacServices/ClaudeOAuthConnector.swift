@@ -1,8 +1,5 @@
 import AIUsageCore
-import CryptoKit
 import Foundation
-import LocalAuthentication
-import Security
 
 actor ClaudeOAuthConnector: UsageConnector {
     nonisolated let providerID = UsageProviderID.claude
@@ -13,7 +10,6 @@ actor ClaudeOAuthConnector: UsageConnector {
     private let session: URLSession
     private let now: @Sendable () -> Date
     private var rateLimitedUntil: Date?
-    private var desktopAutomaticAccessBlocked = false
 
     init(
         credentialStore: any ClaudeCredentialLoading = ClaudeCredentialStore(),
@@ -58,89 +54,40 @@ actor ClaudeOAuthConnector: UsageConnector {
             return try await fetchUsage(using: [credential])
         }
 
-        if !allowInteraction && desktopAutomaticAccessBlocked {
-            throw UsageConnectorError.permissionRequired(
-                AppLanguage.current.text(
-                    "Connect Claude to authorize its data folder",
-                    "Conecta Claude para autorizar su carpeta de datos"
-                )
-            )
-        }
-
         switch desktopReader.load(allowInteraction: allowInteraction, now: now()) {
         case .available(let credential):
-            desktopAutomaticAccessBlocked = false
-            do {
-                return try await fetchUsage(using: [credential])
-            } catch let error as UsageConnectorError {
-                if case .notAuthenticated = error {
-                    throw UsageConnectorError.notAuthenticated(
-                        AppLanguage.current.text(
-                            "Open Claude Desktop to refresh its session",
-                            "Abre Claude Desktop para renovar su sesión"
-                        )
-                    )
-                }
-                throw error
-            }
+            return try await fetchUsage(using: [credential])
         case .dataAccessRequired:
-            if !allowInteraction {
-                desktopAutomaticAccessBlocked = true
-            }
-            throw UsageConnectorError.permissionRequired(
-                AppLanguage.current.text(
-                    "Select the Claude Desktop data folder",
-                    "Selecciona la carpeta de datos de Claude Desktop"
-                )
-            )
+            throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
+                "Connect Claude to authorize its local data folder",
+                "Conecta Claude para autorizar su carpeta de datos local"
+            ))
         case .keychainPermissionRequired:
-            if !allowInteraction {
-                desktopAutomaticAccessBlocked = true
-            }
-            throw UsageConnectorError.permissionRequired(
-                AppLanguage.current.text(
-                    "Confirm access to “Claude Safe Storage” in the Keychain prompt",
-                    "Confirma el acceso a “Claude Safe Storage” en el aviso del Llavero"
-                )
-            )
+            throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
+                "Connect Claude and choose Always Allow once for Claude Safe Storage",
+                "Conecta Claude y elige Permitir siempre una vez para Claude Safe Storage"
+            ))
         case .stale:
-            throw UsageConnectorError.notAuthenticated(
-                AppLanguage.current.text(
-                    "Open Claude Desktop to refresh its session",
-                    "Abre Claude Desktop para renovar su sesión"
-                )
-            )
+            throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
+                "Open Claude to refresh its session",
+                "Abre Claude para renovar su sesión"
+            ))
         case .invalid:
-            throw UsageConnectorError.serverError(
-                AppLanguage.current.text(
-                    "The Claude Desktop session could not be read",
-                    "No se pudo leer la sesión de Claude Desktop"
-                )
-            )
+            throw UsageConnectorError.serverError(AppLanguage.current.text(
+                "The local Claude session could not be read",
+                "No se pudo leer la sesión local de Claude"
+            ))
         case .notFound:
-            if !allowInteraction {
-                desktopAutomaticAccessBlocked = true
-                throw UsageConnectorError.permissionRequired(
-                    AppLanguage.current.text(
-                        "Connect Claude to authorize its data folder",
-                        "Conecta Claude para autorizar su carpeta de datos"
-                    )
-                )
-            }
             if load.permissionRequired {
-                throw UsageConnectorError.permissionRequired(
-                    AppLanguage.current.text(
-                        "Allow access to the Claude Code login and refresh again",
-                        "Permite acceso al login de Claude Code y vuelve a actualizar"
-                    )
-                )
+                throw UsageConnectorError.permissionRequired(AppLanguage.current.text(
+                    "Connect Claude to authorize its local data folder",
+                    "Conecta Claude para autorizar su carpeta de datos local"
+                ))
             }
-            throw UsageConnectorError.notAuthenticated(
-                AppLanguage.current.text(
-                    "Sign in to Claude Code or open Claude Desktop",
-                    "Inicia sesión en Claude Code o abre Claude Desktop"
-                )
-            )
+            throw UsageConnectorError.notAuthenticated(AppLanguage.current.text(
+                "Sign in to Claude Code or open Claude Desktop",
+                "Inicia sesión en Claude Code o abre Claude Desktop"
+            ))
         }
     }
 
@@ -269,45 +216,40 @@ protocol ClaudeCredentialLoading: Sendable {
 }
 
 struct ClaudeCredentialStore: ClaudeCredentialLoading, Sendable {
-    private static let baseService = "Claude Code-credentials"
-    private let environment: [String: String]
-    private let homeDirectory: URL
+    private let dataAccess: ProviderDataAccess?
+    private let directRoot: URL?
 
-    init(
-        environment: [String: String] = ProcessInfo.processInfo.environment,
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
-    ) {
-        self.environment = environment
-        self.homeDirectory = homeDirectory
+    init(dataAccess: ProviderDataAccess = .shared) {
+        self.dataAccess = dataAccess
+        directRoot = nil
+    }
+
+    init(claudeRoot: URL) {
+        dataAccess = nil
+        directRoot = claudeRoot
     }
 
     func loadCandidates() -> ClaudeCredentialLoad {
-        var credentials: [ClaudeCredential] = []
-        var permissionRequired = false
-
-        for service in keychainServices() {
-            let existence = keychainServiceExists(service: service)
-            permissionRequired = permissionRequired || existence.permissionRequired
-            guard existence.exists else { continue }
-
-            for account in [NSUserName(), nil] as [String?] {
-                let result = readKeychain(service: service, account: account)
-                permissionRequired = permissionRequired || result.permissionRequired
-                if let credential = result.credential,
-                   !credentials.contains(where: { $0.accessToken == credential.accessToken })
-                {
-                    credentials.append(credential)
-                }
+        if let directRoot {
+            return ClaudeCredentialLoad(
+                credentials: Self.readFile(in: directRoot).map { [$0] } ?? [],
+                permissionRequired: false
+            )
+        }
+        guard let dataAccess else {
+            return ClaudeCredentialLoad(credentials: [], permissionRequired: true)
+        }
+        do {
+            let credential = try dataAccess.withAccess(to: .claude) { root in
+                Self.readFile(in: root)
             }
+            return ClaudeCredentialLoad(
+                credentials: credential.map { [$0] } ?? [],
+                permissionRequired: false
+            )
+        } catch {
+            return ClaudeCredentialLoad(credentials: [], permissionRequired: true)
         }
-
-        if let fileCredential = readFile(),
-           !credentials.contains(where: { $0.accessToken == fileCredential.accessToken })
-        {
-            credentials.append(fileCredential)
-        }
-
-        return ClaudeCredentialLoad(credentials: credentials, permissionRequired: permissionRequired)
     }
 
     static func parseCredentialData(_ data: Data) -> ClaudeCredential? {
@@ -327,73 +269,10 @@ struct ClaudeCredentialStore: ClaudeCredentialLoading, Sendable {
         )
     }
 
-    private func readFile() -> ClaudeCredential? {
-        let configDirectory = environment["CLAUDE_CONFIG_DIR"].map(URL.init(fileURLWithPath:))
-            ?? homeDirectory.appendingPathComponent(".claude", isDirectory: true)
+    private static func readFile(in configDirectory: URL) -> ClaudeCredential? {
         let url = configDirectory.appendingPathComponent(".credentials.json")
         guard let data = try? Data(contentsOf: url) else { return nil }
         return Self.parseCredentialData(data)
-    }
-
-    private func keychainServices() -> [String] {
-        guard let literal = environment["CLAUDE_CONFIG_DIR"], !literal.isEmpty else {
-            return [Self.baseService]
-        }
-        let normalized = literal.precomposedStringWithCanonicalMapping
-        let digest = SHA256.hash(data: Data(normalized.utf8))
-        let suffix = digest.map { String(format: "%02x", $0) }.joined().prefix(8)
-        return ["\(Self.baseService)-\(suffix)", Self.baseService]
-    }
-
-    private func readKeychain(
-        service: String,
-        account: String?
-    ) -> (credential: ClaudeCredential?, permissionRequired: Bool) {
-        var query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecReturnData as String: true
-        ]
-        if let account, !account.isEmpty { query[kSecAttrAccount as String] = account }
-
-        let context = LAContext()
-        context.interactionNotAllowed = true
-        query[kSecUseAuthenticationContext as String] = context
-
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        switch status {
-        case errSecSuccess:
-            guard let data = result as? Data else { return (nil, false) }
-            return (Self.parseCredentialData(data), false)
-        case errSecInteractionNotAllowed, errSecAuthFailed, errSecUserCanceled:
-            return (nil, true)
-        default:
-            return (nil, false)
-        }
-    }
-
-    private func keychainServiceExists(service: String) -> (exists: Bool, permissionRequired: Bool) {
-        let context = LAContext()
-        context.interactionNotAllowed = true
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecReturnAttributes as String: true,
-            kSecUseAuthenticationContext as String: context
-        ]
-
-        var result: CFTypeRef?
-        switch SecItemCopyMatching(query as CFDictionary, &result) {
-        case errSecSuccess:
-            return (true, false)
-        case errSecInteractionNotAllowed, errSecAuthFailed, errSecUserCanceled:
-            return (false, true)
-        default:
-            return (false, false)
-        }
     }
 }
 
@@ -455,16 +334,24 @@ enum ClaudeUsageNormalizer {
 }
 
 struct ClaudeStatuslineReader: Sendable {
-    let fileURL: URL
+    let fileURL: URL?
     let maximumAge: TimeInterval
+    private let dataAccess: ProviderDataAccess?
 
     init(fileURL: URL? = nil, maximumAge: TimeInterval = 10 * 60) {
-        self.fileURL = fileURL ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/nspanel-rate-limits.json")
+        self.fileURL = fileURL
         self.maximumAge = maximumAge
+        dataAccess = fileURL == nil ? .shared : nil
     }
 
     func readFresh(now: Date) -> ProviderUsageSnapshot? {
+        if let fileURL { return read(fileURL, now: now) }
+        return try? dataAccess?.withAccess(to: .claude) { root in
+            read(root.appendingPathComponent("nspanel-rate-limits.json"), now: now)
+        }
+    }
+
+    private func read(_ fileURL: URL, now: Date) -> ProviderUsageSnapshot? {
         guard
             let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
             let modifiedAt = attributes[.modificationDate] as? Date,

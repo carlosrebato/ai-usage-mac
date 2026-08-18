@@ -25,6 +25,8 @@ SIGNING_INFO="$(codesign -dvv "$APP_PATH" 2>&1)"
 TEAM_ID="$(printf '%s\n' "$SIGNING_INFO" | sed -n 's/^TeamIdentifier=//p')"
 AUTHORITY="$(printf '%s\n' "$SIGNING_INFO" | sed -n 's/^Authority=//p' | head -n 1)"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist")"
+APP_ENTITLEMENTS="$(codesign -d --entitlements - --xml "$APP_PATH" 2>/dev/null)"
+NORMALIZED_APP_ENTITLEMENTS="$(printf '%s' "$APP_ENTITLEMENTS" | tr -d '[:space:]')"
 
 if [ -n "$EXPECTED_BUNDLE_ID" ] && [ "$BUNDLE_ID" != "$EXPECTED_BUNDLE_ID" ]; then
   echo "Unexpected bundle identifier: $BUNDLE_ID" >&2
@@ -38,20 +40,32 @@ fi
   echo "The app has no trusted signing authority; ad-hoc builds cannot test TCC persistence." >&2
   exit 1
 }
+if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq '<key>com.apple.security.app-sandbox</key><true/>'; then
+  echo "The signed app is missing App Sandbox; App Group access may prompt on every launch." >&2
+  exit 1
+fi
 
 mkdir -p "$REPORT_DIR"
 iteration=1
 while [ "$iteration" -le "$RELAUNCH_COUNT" ]; do
   REPORT_PATH="$REPORT_DIR/run-$iteration.json"
   rm -f "$REPORT_PATH"
-  "$EXECUTABLE" --smoke-test --smoke-report "$REPORT_PATH"
+  # A sandboxed app cannot write to the caller's arbitrary temporary folder.
+  # Capture its JSON stdout from outside the sandbox instead.
+  "$EXECUTABLE" --smoke-test > "$REPORT_PATH"
   [ -f "$REPORT_PATH" ] || { echo "Run $iteration produced no report." >&2; exit 1; }
-  if ! grep -Eq '"passed"[[:space:]]*:[[:space:]]*true' "$REPORT_PATH"; then
-    echo "Run $iteration needs attention. Login, macOS permission or usable cached data is missing:" >&2
+  if ! grep -Eq '"permissionsPersisted"[[:space:]]*:[[:space:]]*true' "$REPORT_PATH" ||
+     ! grep -Eq '"hasUsageData"[[:space:]]*:[[:space:]]*true' "$REPORT_PATH" ||
+     grep -Eq '"connection"[[:space:]]*:[[:space:]]*"(missing|action-required:)' "$REPORT_PATH"; then
+    echo "Run $iteration needs attention. Permissions and usable provider data must persist:" >&2
     cat "$REPORT_PATH" >&2
     exit 1
   fi
-  echo "Smoke run $iteration/$RELAUNCH_COUNT passed."
+  if grep -Eq '"hasLiveData"[[:space:]]*:[[:space:]]*true' "$REPORT_PATH"; then
+    echo "Smoke run $iteration/$RELAUNCH_COUNT passed with live data."
+  else
+    echo "Smoke run $iteration/$RELAUNCH_COUNT passed with persisted permissions and cached data (provider rate limit)."
+  fi
   iteration=$((iteration + 1))
 done
 

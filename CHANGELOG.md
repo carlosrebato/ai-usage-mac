@@ -2,6 +2,16 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.1-beta.2 — 2026-08-18
+
+- Fix repeated macOS “data from other apps” prompts by shipping the main app
+  with App Sandbox enabled and preserving the stable App Group identity.
+- Connect Claude Code through the user-selected `~/.claude` folder instead of
+  requiring access to Claude Desktop's `Claude Safe Storage` keychain item.
+- Serialize the legacy Claude Desktop keychain fallback to prevent duplicate
+  permission dialogs during overlapping refreshes.
+- Reject signed release builds that omit the App Sandbox entitlement.
+
 ## 0.1.0-beta.1 — 2026-08-13
 
 First public beta.

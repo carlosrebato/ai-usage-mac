@@ -94,6 +94,26 @@ The script rejects apps not signed with `Developer ID Application`, waits for
 Apple, staples and validates the ticket, checks Gatekeeper and creates
 `AI Usage-notarized.zip`.
 
+## Publish an automatic update
+
+AI Usage uses Sparkle. The public EdDSA key is embedded in the app; its private
+counterpart stays in the login Keychain under the account
+`com.carlosrebato.aiusage` and must never be committed.
+
+After notarizing a release, put the final ZIP in a directory by itself and run:
+
+```sh
+Scripts/generate-appcast.sh v0.2.0 /path/to/release-archives
+```
+
+Upload the ZIP to the matching GitHub Release and commit the generated
+`appcast.xml` at the repository root. Sparkle reads that file from the `main`
+branch, verifies the archive's EdDSA signature and compares `CFBundleVersion`.
+Every public build must therefore increment `CURRENT_PROJECT_VERSION`.
+
+The first build that embeds Sparkle must still be installed manually. Builds
+after that can update automatically.
+
 ## Automating signed releases
 
 After a manual release works end to end, add a workflow protected by a GitHub

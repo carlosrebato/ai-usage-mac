@@ -13,9 +13,11 @@
 		4784C1B9DAAE01C66139AAC0 /* AIUsageMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97662764C540C87CA535A972 /* AIUsageMacApp.swift */; };
 		4D15F626E0B5B2FED14108ED /* FloatingPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF66BFFCA242CE4776551F2 /* FloatingPanelView.swift */; };
 		51120F7DAA3F1159180EF9DE /* AIUsageDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 7E08062852C441777264C92B /* AIUsageDesignSystem */; };
+		61AF5A5FDB17C88C70DC350B /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 77A71572A0533C443715122C /* Sparkle */; };
 		6CBC0C10ED5587FB869E5623 /* AIUsageWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896ACE1407350F5EE0D5B228 /* AIUsageWidgets.swift */; };
 		71B6D5D44FD8506C36D61C62 /* AIUsageCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1C6776C86CC470D976609DDC /* AIUsageCore */; };
 		7AFCA9588C8495F6F4D923A6 /* ConnectionSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BBC7E8EA18221FEE74D8C5 /* ConnectionSetupView.swift */; };
+		81F5BC73112C530038382899 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B1175E44064FA3670635D17 /* AppUpdater.swift */; };
 		83FECE383B57238B0947C875 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3A97FAFB482A477083468 /* DashboardView.swift */; };
 		8980B2E21706482AF929213E /* AIUsageDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 33A466B72D30E386F4E0C48B /* AIUsageDesignSystem */; };
 		99CA125DCD0C9140B327A1BE /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467D89BE150B861D10E8C014 /* AppPreferences.swift */; };
@@ -55,6 +57,7 @@
 		26BC9C6C2BB3A2D8E8AD2508 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3C596C0928838DD236DB3D49 /* AIUsageMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIUsageMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		467D89BE150B861D10E8C014 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
+		4B1175E44064FA3670635D17 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		6E807D698482110899B3D06D /* ClaudeDesktopAccessPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeDesktopAccessPicker.swift; sourceTree = "<group>"; };
 		80F3A97FAFB482A477083468 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		896ACE1407350F5EE0D5B228 /* AIUsageWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageWidgets.swift; sourceTree = "<group>"; };
@@ -84,6 +87,7 @@
 				71B6D5D44FD8506C36D61C62 /* AIUsageCore in Frameworks */,
 				51120F7DAA3F1159180EF9DE /* AIUsageDesignSystem in Frameworks */,
 				1CE25234CE59B34D7F81C72A /* AIUsageMacServices in Frameworks */,
+				61AF5A5FDB17C88C70DC350B /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +125,7 @@
 			children = (
 				97662764C540C87CA535A972 /* AIUsageMacApp.swift */,
 				467D89BE150B861D10E8C014 /* AppPreferences.swift */,
+				4B1175E44064FA3670635D17 /* AppUpdater.swift */,
 				F17790B1FDFFFA95070A3874 /* Assets.xcassets */,
 				6E807D698482110899B3D06D /* ClaudeDesktopAccessPicker.swift */,
 				04BBC7E8EA18221FEE74D8C5 /* ConnectionSetupView.swift */,
@@ -184,6 +189,7 @@
 				1C6776C86CC470D976609DDC /* AIUsageCore */,
 				7E08062852C441777264C92B /* AIUsageDesignSystem */,
 				9956EE383533FBF8AA2BD530 /* AIUsageMacServices */,
+				77A71572A0533C443715122C /* Sparkle */,
 			);
 			productName = AIUsageMac;
 			productReference = 3C596C0928838DD236DB3D49 /* AIUsageMac.app */;
@@ -216,6 +222,7 @@
 			mainGroup = 1A9B208FA40296A655AEFA28;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				112CCB6F5A8162A86E8649B6 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				D9BA54869666A90F14B42FB0 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -255,6 +262,7 @@
 			files = (
 				4784C1B9DAAE01C66139AAC0 /* AIUsageMacApp.swift in Sources */,
 				99CA125DCD0C9140B327A1BE /* AppPreferences.swift in Sources */,
+				81F5BC73112C530038382899 /* AppUpdater.swift in Sources */,
 				9CCB09B60326A086B1C9AF36 /* ClaudeDesktopAccessPicker.swift in Sources */,
 				7AFCA9588C8495F6F4D923A6 /* ConnectionSetupView.swift in Sources */,
 				83FECE383B57238B0947C875 /* DashboardView.swift in Sources */,
@@ -313,7 +321,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -326,7 +334,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -366,13 +374,10 @@
 				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_AIUsageAppGroup = "$(AI_USAGE_APP_GROUP)";
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_LSUIElement = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Configurations/AIUsageMac-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -390,13 +395,10 @@
 				CODE_SIGN_ENTITLEMENTS = Configurations/AIUsageMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_AIUsageAppGroup = "$(AI_USAGE_APP_GROUP)";
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_LSUIElement = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Configurations/AIUsageMac-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -466,7 +468,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -485,7 +487,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -536,6 +538,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		112CCB6F5A8162A86E8649B6 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		1C6776C86CC470D976609DDC /* AIUsageCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -548,6 +561,11 @@
 		33A466B72D30E386F4E0C48B /* AIUsageDesignSystem */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AIUsageDesignSystem;
+		};
+		77A71572A0533C443715122C /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 112CCB6F5A8162A86E8649B6 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		7E08062852C441777264C92B /* AIUsageDesignSystem */ = {
 			isa = XCSwiftPackageProductDependency;

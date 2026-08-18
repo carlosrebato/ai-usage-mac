@@ -120,6 +120,11 @@ public final class UsageStore: ObservableObject {
         for outcome in outcomes {
             switch outcome.value {
             case .success(let snapshot):
+                // Connector snapshots only contain quota windows. Keep the last
+                // successfully indexed local totals until a newer metrics scan
+                // replaces them; a transient bookmark/indexing failure must not
+                // erase cost and token data from the UI or the cache.
+                let snapshot = preservingWeeklyTotals(in: snapshot)
                 replace(snapshot)
                 replaceConnectionStatus(ProviderConnectionStatus(
                     id: outcome.providerID,
@@ -218,6 +223,24 @@ public final class UsageStore: ObservableObject {
         } else {
             snapshots.append(snapshot)
         }
+    }
+
+    private func preservingWeeklyTotals(
+        in snapshot: ProviderUsageSnapshot
+    ) -> ProviderUsageSnapshot {
+        guard snapshot.weeklyTotals == nil,
+              let previousTotals = snapshots.first(where: { $0.id == snapshot.id })?.weeklyTotals
+        else { return snapshot }
+
+        return ProviderUsageSnapshot(
+            id: snapshot.id,
+            session: snapshot.session,
+            weekly: snapshot.weekly,
+            observedAt: snapshot.observedAt,
+            source: snapshot.source,
+            message: snapshot.message,
+            weeklyTotals: previousTotals
+        )
     }
 
     private func replaceConnectionStatus(_ status: ProviderConnectionStatus) {

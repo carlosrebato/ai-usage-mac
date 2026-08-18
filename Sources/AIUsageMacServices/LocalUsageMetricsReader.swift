@@ -53,8 +53,9 @@ public actor LocalUsageMetricsReader: LocalUsageMetricsReading {
         let totals: [Date: Int]
     }
 
-    private let claudeRoot: URL
-    private let codexRoot: URL
+    private let claudeRoot: URL?
+    private let codexRoot: URL?
+    private let dataAccess: ProviderDataAccess?
     private let index: LocalUsageMetricsIndex?
     private let refreshInterval: TimeInterval
     private var lastRefresh: [UsageProviderID: Date] = [:]
@@ -65,19 +66,26 @@ public actor LocalUsageMetricsReader: LocalUsageMetricsReading {
     private var latestDiagnostics: [UsageProviderID: LocalUsageMetricsDiagnostics] = [:]
 
     public init(
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        homeDirectory: URL? = nil,
         indexURL: URL? = nil,
         refreshInterval: TimeInterval = 15 * 60
     ) {
-        claudeRoot = homeDirectory
+        claudeRoot = homeDirectory?
             .appendingPathComponent(".claude/projects", isDirectory: true)
-        codexRoot = homeDirectory
+        codexRoot = homeDirectory?
             .appendingPathComponent(".codex/sessions", isDirectory: true)
+        dataAccess = homeDirectory == nil ? .shared : nil
         let bundleIdentifier = ProcessInfo.processInfo.environment["AI_USAGE_APP_BUNDLE_ID"]
             ?? Bundle.main.bundleIdentifier
             ?? "com.example.aiusage"
-        let resolvedIndexURL = indexURL ?? homeDirectory
-            .appendingPathComponent("Library/Caches/\(bundleIdentifier)", isDirectory: true)
+        let cacheBase = homeDirectory?
+            .appendingPathComponent("Library/Caches", isDirectory: true)
+            ?? FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: AIUsageAppGroup.identifier
+            )
+            ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let resolvedIndexURL = indexURL ?? cacheBase
+            .appendingPathComponent(bundleIdentifier, isDirectory: true)
             .appendingPathComponent("usage-metrics-v1.sqlite3")
         index = try? LocalUsageMetricsIndex(databaseURL: resolvedIndexURL)
         self.refreshInterval = refreshInterval
@@ -212,8 +220,22 @@ public actor LocalUsageMetricsReader: LocalUsageMetricsReading {
            Date.now.timeIntervalSince(lastRefresh) < refreshInterval {
             return
         }
-        let root = provider == .claude ? claudeRoot : codexRoot
-        if let diagnostics = try? index.synchronize(provider: provider, root: root) {
+        let diagnostics: LocalUsageMetricsDiagnostics?
+        if let root = provider == .claude ? claudeRoot : codexRoot {
+            diagnostics = try? index.synchronize(provider: provider, root: root)
+        } else if let dataAccess {
+            let directory: ProviderDataDirectory = provider == .claude ? .claudeCode : .codex
+            diagnostics = try? dataAccess.withAccess(to: directory) { root in
+                let sessionsRoot = root.appendingPathComponent(
+                    provider == .claude ? "projects" : "sessions",
+                    isDirectory: true
+                )
+                return try index.synchronize(provider: provider, root: sessionsRoot)
+            }
+        } else {
+            diagnostics = nil
+        }
+        if let diagnostics {
             latestDiagnostics[provider] = diagnostics
             lastRefresh[provider] = .now
             if diagnostics.didChangeIndex || indexGeneration[provider] == nil {

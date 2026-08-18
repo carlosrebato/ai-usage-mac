@@ -10,6 +10,7 @@ struct MenuBarView: View {
     }
 
     @EnvironmentObject private var store: UsageStore
+    @EnvironmentObject private var providerSelection: ProviderSelectionStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
@@ -19,18 +20,15 @@ struct MenuBarView: View {
     @State private var isExpanded = false
     @State private var now = Date.now
 
-    private let openDashboardAction: (() -> Void)?
     private let detachAction: (() -> Void)?
     private let settingsAction: (() -> Void)?
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     init(
-        openDashboard: (() -> Void)? = nil,
         detach: (() -> Void)? = nil,
         settings: (() -> Void)? = nil
     ) {
-        openDashboardAction = openDashboard
         detachAction = detach
         settingsAction = settings
     }
@@ -44,7 +42,7 @@ struct MenuBarView: View {
                     .padding(.bottom, 16)
 
                 UsageDetailedMetrics(
-                    snapshots: store.snapshots,
+                    snapshots: visibleSnapshots,
                     now: now,
                     history: store.history,
                     language: language
@@ -54,31 +52,11 @@ struct MenuBarView: View {
                     .padding(.bottom, 16)
             } else {
                 UsageCompactMetrics(
-                    snapshots: store.snapshots,
+                    snapshots: visibleSnapshots,
                     now: now,
                     language: language
                 )
                     .padding(.vertical, 16)
-            }
-
-            if store.requiresUserAction {
-                Rectangle().fill(UsageTheme.hairline).frame(height: 1)
-                Button {
-                    if let openDashboardAction {
-                        openDashboardAction()
-                    } else {
-                        NSApp.activate(ignoringOtherApps: true)
-                        openWindow(id: "dashboard")
-                    }
-                } label: {
-                    Label(
-                        language.text("Complete setup", "Completar conexión"),
-                        systemImage: "exclamationmark.circle"
-                    )
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(UsagePillButtonStyle())
-                .padding(14)
             }
 
             Rectangle().fill(UsageTheme.hairline).frame(height: 1)
@@ -113,13 +91,17 @@ struct MenuBarView: View {
                     .font(.system(size: 15, weight: .semibold, design: .monospaced))
                     .foregroundStyle(UsageTheme.primaryText)
                 UsageHeaderFreshnessLine(
-                    snapshots: store.snapshots,
+                    snapshots: visibleSnapshots,
                     isRefreshing: store.isRefreshing,
                     now: now,
                     language: language
                 )
             }
         }
+    }
+
+    private var visibleSnapshots: [ProviderUsageSnapshot] {
+        providerSelection.filtering(store.snapshots)
     }
 
     private var controls: some View {

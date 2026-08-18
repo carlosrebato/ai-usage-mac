@@ -14,6 +14,9 @@ let package = Package(
         .library(name: "AIUsageMacServices", targets: ["AIUsageMacServices"]),
         .executable(name: "AIUsageMac", targets: ["AIUsageMac"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.2")
+    ],
     targets: [
         .target(
             name: "AIUsageCore",
@@ -33,7 +36,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "AIUsageMac",
-            dependencies: ["AIUsageCore", "AIUsageDesignSystem", "AIUsageMacServices"],
+            dependencies: [
+                "AIUsageCore",
+                "AIUsageDesignSystem",
+                "AIUsageMacServices",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "App",
             exclude: ["Assets.xcassets"]
         ),

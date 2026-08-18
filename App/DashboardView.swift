@@ -118,13 +118,8 @@ struct DashboardView: View {
     }
 
     private func connectClaude() async {
-        if ClaudeDesktopDataAccess.shared.hasUsableAccess {
-            claudeAccessError = nil
-            await store.refreshWhenIdle(force: true, allowInteraction: true)
-            return
-        }
         do {
-            guard try await ClaudeDesktopAccessPicker.requestAccess() else { return }
+            guard try await ProviderDataAccessPicker.requestAccess(for: .claude) else { return }
             claudeAccessError = nil
             await store.refreshWhenIdle(force: true, allowInteraction: true)
         } catch {

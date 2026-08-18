@@ -9,12 +9,15 @@ options:
 packages:
   AIUsageKit:
     path: .
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.2
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    CURRENT_PROJECT_VERSION: 1
-    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 2
+    MARKETING_VERSION: 0.1.1
     AI_USAGE_APP_BUNDLE_ID: com.example.aiusage
     AI_USAGE_WIDGET_BUNDLE_ID: $(AI_USAGE_APP_BUNDLE_ID).widgets
     AI_USAGE_APP_GROUP: group.com.example.aiusage
@@ -32,28 +35,32 @@ targets:
         product: AIUsageDesignSystem
       - package: AIUsageKit
         product: AIUsageMacServices
+      - package: Sparkle
+        product: Sparkle
       - target: AIUsageWidgets
         embed: true
     entitlements:
       path: Configurations/AIUsageMac.entitlements
       properties:
+        com.apple.security.app-sandbox: true
         com.apple.security.application-groups:
           - $(AI_USAGE_APP_GROUP)
         com.apple.security.files.bookmarks.app-scope: true
         com.apple.security.files.user-selected.read-only: true
+        com.apple.security.network.client: true
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(AI_USAGE_APP_BUNDLE_ID)
         PRODUCT_NAME: AI Usage
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: AI Usage
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_AIUsageAppGroup: $(AI_USAGE_APP_GROUP)
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Configurations/AIUsageMac-Info.plist
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
-        ENABLE_APP_SANDBOX: NO
+        ENABLE_APP_SANDBOX: YES
 
   AIUsageWidgets:
     type: app-extension

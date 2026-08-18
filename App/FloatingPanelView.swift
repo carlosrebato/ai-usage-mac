@@ -5,7 +5,10 @@ import AppKit
 import SwiftUI
 
 struct FloatingPanelView: View {
+    static let size = NSSize(width: 256, height: 204)
+
     @EnvironmentObject private var store: UsageStore
+    @EnvironmentObject private var providerSelection: ProviderSelectionStore
     @Environment(\.dismissWindow) private var dismissWindow
     @State private var now = Date.now
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
@@ -19,48 +22,39 @@ struct FloatingPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button {
-                    if let onDock {
-                        onDock()
-                    } else {
-                        dismissWindow(id: "floating")
-                    }
-                } label: {
-                    Label(
-                        language.text("Dock", "Acoplar"),
-                        systemImage: "chevron.left"
-                    )
-                }
-                .buttonStyle(UsagePillButtonStyle())
-
-                Spacer()
-
-                HStack(spacing: 6) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        Circle()
-                            .fill(UsageTheme.mutedText)
-                            .frame(width: 5, height: 5)
-                    }
-                }
-            }
-            .padding(14)
-
-            Rectangle().fill(UsageTheme.hairline).frame(height: 1)
-
             UsageFloatingMetrics(
-                snapshots: store.snapshots,
+                snapshots: visibleSnapshots,
                 now: now,
                 language: language
             )
                 .padding(16)
 
-            Spacer(minLength: 0)
+            Rectangle().fill(UsageTheme.hairline).frame(height: 1)
+
+            Button {
+                if let onDock {
+                    onDock()
+                } else {
+                    dismissWindow(id: "floating")
+                }
+            } label: {
+                Label(
+                    language.text("Attach", "Acoplar"),
+                    systemImage: "arrow.down.left.and.arrow.up.right"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(UsagePillButtonStyle())
+            .padding(12)
         }
-        .frame(width: 256, height: 256)
+        .frame(width: Self.size.width, height: Self.size.height)
         .usagePanel(cornerRadius: 18)
         .background(FloatingWindowConfigurator())
         .onReceive(timer) { now = $0 }
+    }
+
+    private var visibleSnapshots: [ProviderUsageSnapshot] {
+        providerSelection.filtering(store.snapshots)
     }
 }
 
@@ -78,7 +72,7 @@ private struct FloatingWindowConfigurator: NSViewRepresentable {
     private func configureWindow(for view: NSView) {
         DispatchQueue.main.async {
             guard let window = view.window else { return }
-            let squareSize = NSSize(width: 256, height: 256)
+            let panelSize = FloatingPanelView.size
 
             window.styleMask = [.borderless]
             window.backgroundColor = .clear
@@ -86,9 +80,9 @@ private struct FloatingWindowConfigurator: NSViewRepresentable {
             window.hasShadow = true
             window.isMovableByWindowBackground = true
             window.level = .floating
-            window.minSize = squareSize
-            window.maxSize = squareSize
-            window.setContentSize(squareSize)
+            window.minSize = panelSize
+            window.maxSize = panelSize
+            window.setContentSize(panelSize)
         }
     }
 }

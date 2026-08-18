@@ -149,6 +149,44 @@ struct UsageStoreTests {
         #expect(store.connectionStatuses.first { $0.id == .codex }?.phase == .connected)
     }
 
+    @Test @MainActor func liveRefreshDoesNotErasePreviouslyIndexedWeeklyTotals() async throws {
+        let cache = temporaryCache()
+        let totals = WeeklyUsageTotals(
+            inputTokens: 1_200,
+            cachedInputTokens: 300,
+            cacheWriteTokens: 0,
+            outputTokens: 500,
+            reasoningTokens: 0,
+            equivalentCostUSD: 4.25,
+            hasUnpricedModels: false,
+            periodStart: Date(timeIntervalSince1970: 0),
+            periodEnd: Date(timeIntervalSince1970: 100)
+        )
+        let cached = ProviderUsageSnapshot(
+            id: .codex,
+            session: UsageWindow(usedPercent: nil, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: 40, resetsAt: nil),
+            observedAt: Date(timeIntervalSince1970: 50),
+            source: .live,
+            message: "Indexed",
+            weeklyTotals: totals
+        )
+        try cache.save([cached])
+        let store = UsageStore(
+            codexConnector: FixedConnector(
+                snapshot: codexSnapshot(percent: 41, source: .live)
+            ),
+            claudeConnector: nil,
+            cache: cache
+        )
+
+        await store.refresh()
+
+        let refreshed = store.snapshots.first { $0.id == .codex }
+        #expect(refreshed?.weekly.usedPercent == 41)
+        #expect(refreshed?.weeklyTotals == totals)
+    }
+
     @Test @MainActor func failureKeepsTheLastKnownValue() async throws {
         let cache = temporaryCache()
         try cache.save([codexSnapshot(percent: 54, source: .live)])

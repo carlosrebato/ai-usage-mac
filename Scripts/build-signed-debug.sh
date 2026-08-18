@@ -43,6 +43,11 @@ fi
 APP_ENTITLEMENTS="$(codesign -d --entitlements - --xml "$APP_PATH" 2>/dev/null)"
 WIDGET_PATH="$APP_PATH/Contents/PlugIns/AI Usage Widgets.appex"
 WIDGET_ENTITLEMENTS="$(codesign -d --entitlements - --xml "$WIDGET_PATH" 2>/dev/null)"
+NORMALIZED_APP_ENTITLEMENTS="$(printf '%s' "$APP_ENTITLEMENTS" | tr -d '[:space:]')"
+if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq '<key>com.apple.security.app-sandbox</key><true/>'; then
+  echo "App is missing the sandbox entitlement required for persistent App Group access." >&2
+  exit 1
+fi
 if ! printf '%s' "$APP_ENTITLEMENTS" | grep -Fq "<string>$EXPECTED_APP_GROUP</string>"; then
   echo "App is missing the expected App Group entitlement: $EXPECTED_APP_GROUP" >&2
   exit 1

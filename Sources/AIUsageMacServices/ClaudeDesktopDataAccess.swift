@@ -1,31 +1,78 @@
 import AIUsageCore
 import Foundation
 
-public enum ClaudeDesktopDataAccessError: LocalizedError {
-    case unexpectedFolder
+public enum ProviderDataDirectory: String, CaseIterable, Sendable {
+    case claude
+    case claudeCode
+    case codex
+
+    public var folderName: String {
+        switch self {
+        case .claude: "Claude"
+        case .claudeCode: ".claude"
+        case .codex: ".codex"
+        }
+    }
+
+    fileprivate var providerName: String {
+        switch self {
+        case .claude, .claudeCode: "Claude"
+        case .codex: "Codex"
+        }
+    }
+
+    fileprivate var acceptedFolderNames: Set<String> {
+        switch self {
+        case .claude: ["Claude", ".claude"]
+        case .claudeCode: [".claude"]
+        case .codex: [".codex"]
+        }
+    }
+
+    fileprivate var bookmarkKey: String {
+        switch self {
+        case .claude: "providerDataBookmark.claude.v2"
+        case .claudeCode: "providerDataBookmark.claudeCode.v1"
+        case .codex: "providerDataBookmark.codex.v1"
+        }
+    }
+}
+
+public enum ProviderDataAccessError: LocalizedError {
+    case unexpectedFolder(expected: String)
+    case accessNotGranted(provider: ProviderDataDirectory)
 
     public var errorDescription: String? {
         switch self {
-        case .unexpectedFolder:
+        case .unexpectedFolder(let expected):
             AppLanguage.current.text(
-                "Select the “Claude” folder inside Library/Application Support.",
-                "Selecciona la carpeta “Claude” de Library/Application Support."
+                "Select the \(expected) folder in your home directory.",
+                "Selecciona la carpeta \(expected) de tu carpeta de usuario."
+            )
+        case .accessNotGranted(let provider):
+            AppLanguage.current.text(
+                "Connect \(provider.providerName) to grant read-only access to \(provider.folderName).",
+                "Conecta \(provider.providerName) para conceder acceso de solo lectura a \(provider.folderName)."
             )
         }
     }
 }
 
-public final class ClaudeDesktopDataAccess: @unchecked Sendable {
-    public static let shared = ClaudeDesktopDataAccess()
+/// Owns the persistent security-scoped bookmarks selected in onboarding.
+///
+/// Each provider gets its own least-privilege folder grant. Callers must perform
+/// every file read inside `withAccess(to:_:)` so the security scope is active in
+/// sandboxed builds and is always released afterwards.
+public final class ProviderDataAccess: @unchecked Sendable {
+    public static let shared = ProviderDataAccess()
 
-    private static let bookmarkKey = "claudeDesktopDataBookmark"
     private let defaults: UserDefaults
     private let bookmarkCoder: any ClaudeDesktopBookmarkCoding
     private let lock = NSLock()
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        bookmarkCoder = SystemClaudeDesktopBookmarkCoder()
+        bookmarkCoder = SystemProviderBookmarkCoder()
     }
 
     init(
@@ -36,26 +83,26 @@ public final class ClaudeDesktopDataAccess: @unchecked Sendable {
         self.bookmarkCoder = bookmarkCoder
     }
 
-    public var hasStoredAccess: Bool {
-        lock.withLock { defaults.data(forKey: Self.bookmarkKey) != nil }
+    public func hasStoredAccess(for provider: ProviderDataDirectory) -> Bool {
+        lock.withLock { defaults.data(forKey: provider.bookmarkKey) != nil }
     }
 
-    public var hasUsableAccess: Bool {
-        resolvedURL() != nil
+    public func hasUsableAccess(for provider: ProviderDataDirectory) -> Bool {
+        resolvedURL(for: provider) != nil
     }
 
-    public func saveAccess(to folder: URL) throws {
+    public func saveAccess(to folder: URL, for provider: ProviderDataDirectory) throws {
         let normalized = folder.standardizedFileURL.resolvingSymlinksInPath()
-        guard normalized.lastPathComponent == "Claude" else {
-            throw ClaudeDesktopDataAccessError.unexpectedFolder
+        guard provider.acceptedFolderNames.contains(normalized.lastPathComponent) else {
+            throw ProviderDataAccessError.unexpectedFolder(expected: provider.folderName)
         }
 
         let bookmark = try bookmarkCoder.createBookmark(for: normalized)
-        lock.withLock { defaults.set(bookmark, forKey: Self.bookmarkKey) }
+        lock.withLock { defaults.set(bookmark, forKey: provider.bookmarkKey) }
     }
 
-    public func resolvedURL() -> URL? {
-        guard let bookmark = lock.withLock({ defaults.data(forKey: Self.bookmarkKey) }) else {
+    public func resolvedURL(for provider: ProviderDataDirectory) -> URL? {
+        guard let bookmark = lock.withLock({ defaults.data(forKey: provider.bookmarkKey) }) else {
             return nil
         }
 
@@ -63,16 +110,51 @@ public final class ClaudeDesktopDataAccess: @unchecked Sendable {
             return nil
         }
 
+        guard provider.acceptedFolderNames.contains(
+            resolution.url.standardizedFileURL.lastPathComponent
+        ) else {
+            return nil
+        }
+
         if resolution.isStale,
            let refreshed = try? bookmarkCoder.createBookmark(for: resolution.url) {
-            lock.withLock { defaults.set(refreshed, forKey: Self.bookmarkKey) }
+            lock.withLock { defaults.set(refreshed, forKey: provider.bookmarkKey) }
         }
         return resolution.url
     }
 
-    public func removeAccess() {
-        lock.withLock { defaults.removeObject(forKey: Self.bookmarkKey) }
+    public func withAccess<T>(
+        to provider: ProviderDataDirectory,
+        _ operation: (URL) throws -> T
+    ) throws -> T {
+        guard let folder = resolvedURL(for: provider) else {
+            throw ProviderDataAccessError.accessNotGranted(provider: provider)
+        }
+
+        let didStart = folder.startAccessingSecurityScopedResource()
+        defer {
+            if didStart { folder.stopAccessingSecurityScopedResource() }
+        }
+        return try operation(folder)
     }
+
+    public func removeAccess(for provider: ProviderDataDirectory) {
+        lock.withLock { defaults.removeObject(forKey: provider.bookmarkKey) }
+    }
+}
+
+// Temporary source compatibility while the old Claude Desktop-specific reader
+// is phased out. New code should use ProviderDataAccess with an explicit provider.
+public typealias ClaudeDesktopDataAccess = ProviderDataAccess
+
+extension ProviderDataAccess {
+    public var hasStoredAccess: Bool { hasStoredAccess(for: .claude) }
+    public var hasUsableAccess: Bool { hasUsableAccess(for: .claude) }
+    public var isDesktopSessionAuthorized: Bool { hasUsableAccess(for: .claude) }
+    public func authorizeDesktopSession() {}
+    public func saveAccess(to folder: URL) throws { try saveAccess(to: folder, for: .claude) }
+    public func resolvedURL() -> URL? { resolvedURL(for: .claude) }
+    public func removeAccess() { removeAccess(for: .claude) }
 }
 
 protocol ClaudeDesktopBookmarkCoding: Sendable {
@@ -80,7 +162,7 @@ protocol ClaudeDesktopBookmarkCoding: Sendable {
     func resolveBookmark(_ data: Data) throws -> (url: URL, isStale: Bool)
 }
 
-private struct SystemClaudeDesktopBookmarkCoder: ClaudeDesktopBookmarkCoding {
+private struct SystemProviderBookmarkCoder: ClaudeDesktopBookmarkCoding {
     func createBookmark(for url: URL) throws -> Data {
         try url.bookmarkData(
             options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
