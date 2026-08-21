@@ -2,6 +2,16 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.2-beta.1 — 2026-08-21
+
+- Preserve the seven-day usage chart and streak while refining Settings and
+  the detached compact panel.
+- Show each connected assistant's actual plan, including Claude Max 5x/20x,
+  by reading the authenticated Claude profile when local metadata is absent.
+- Simplify Settings by removing the redundant assistant-count badge.
+- Replace the detached panel's bottom Attach button with a minimal corner
+  control and remove the stray square border around the panel.
+
 ## 0.1.1-beta.4 — 2026-08-18
 
 - Replace the Terminal-based Claude Code login with a native browser OAuth flow

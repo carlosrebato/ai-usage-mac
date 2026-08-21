@@ -5,7 +5,7 @@ import AppKit
 import SwiftUI
 
 struct FloatingPanelView: View {
-    static let size = NSSize(width: 256, height: 204)
+    static let size = NSSize(width: 256, height: 166)
 
     @EnvironmentObject private var store: UsageStore
     @EnvironmentObject private var providerSelection: ProviderSelectionStore
@@ -21,15 +21,15 @@ struct FloatingPanelView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .topTrailing) {
             UsageFloatingMetrics(
                 snapshots: visibleSnapshots,
                 now: now,
                 language: language
             )
-                .padding(16)
-
-            Rectangle().fill(UsageTheme.hairline).frame(height: 1)
+            .padding(.horizontal, 16)
+            .padding(.top, 34)
+            .padding(.bottom, 14)
 
             Button {
                 if let onDock {
@@ -38,17 +38,25 @@ struct FloatingPanelView: View {
                     dismissWindow(id: "floating")
                 }
             } label: {
-                Label(
-                    language.text("Attach", "Acoplar"),
-                    systemImage: "arrow.down.left.and.arrow.up.right"
-                )
-                .frame(maxWidth: .infinity)
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(UsageTheme.secondaryText)
+                    .frame(width: 26, height: 26)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(UsagePillButtonStyle())
-            .padding(12)
+            .buttonStyle(.plain)
+            .padding(.top, 7)
+            .padding(.trailing, 8)
+            .help(language.text("Attach", "Acoplar"))
+            .accessibilityLabel(language.text("Attach", "Acoplar"))
         }
         .frame(width: Self.size.width, height: Self.size.height)
-        .usagePanel(cornerRadius: 18)
+        .background(UsageTheme.panelGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(UsageTheme.hairline, lineWidth: 1)
+        }
         .background(FloatingWindowConfigurator())
         .onReceive(timer) { now = $0 }
     }

@@ -54,7 +54,7 @@ if ! printf '%s' "$NORMALIZED_APP_ENTITLEMENTS" | grep -Fq "<key>keychain-access
   exit 1
 fi
 
-KEYCHAIN_REPORT="$($EXECUTABLE --verify-oauth-keychain)"
+KEYCHAIN_REPORT="$("$EXECUTABLE" --verify-oauth-keychain)"
 if ! printf '%s' "$KEYCHAIN_REPORT" | grep -Eq '"keychainAccess"[[:space:]]*:[[:space:]]*true'; then
   echo "The signed app cannot write and read its OAuth token in Keychain:" >&2
   printf '%s\n' "$KEYCHAIN_REPORT" >&2

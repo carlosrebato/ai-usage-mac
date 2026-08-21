@@ -746,13 +746,23 @@ public struct ProviderGlyph: View {
     }
 
     public var body: some View {
-        Image(provider == .claude ? "ClaudeLogo" : "CodexLogo", bundle: .module)
+        Image(provider == .claude ? "ClaudeLogo" : "CodexLogo", bundle: providerMarksBundle)
             .resizable()
             .renderingMode(.template)
             .scaledToFit()
             .foregroundStyle(color)
             .frame(width: size, height: size)
             .accessibilityLabel(provider.displayName)
+    }
+
+    private var providerMarksBundle: Bundle {
+        if let url = Bundle.main.url(
+            forResource: "AIUsageKit_AIUsageDesignSystem",
+            withExtension: "bundle"
+        ), let bundle = Bundle(url: url) {
+            return bundle
+        }
+        return .module
     }
 }
 
