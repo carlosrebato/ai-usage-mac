@@ -10,6 +10,7 @@ actor ClaudeOAuthConnector: UsageConnector {
     private let session: URLSession
     private let now: @Sendable () -> Date
     private var rateLimitedUntil: Date?
+    private var cachedPlan: String?
 
     init(
         credentialStore: any ClaudeCredentialLoading = ClaudeCredentialStore(),
@@ -140,9 +141,19 @@ actor ClaudeOAuthConnector: UsageConnector {
             switch http.statusCode {
             case 200:
                 rateLimitedUntil = nil
+                let plan: String?
+                if let credentialPlan = credential.displayPlan {
+                    plan = credentialPlan
+                } else if let cachedPlan {
+                    plan = cachedPlan
+                } else {
+                    let profilePlan = await fetchProfilePlan(using: credential.accessToken)
+                    cachedPlan = profilePlan
+                    plan = profilePlan
+                }
                 return try ClaudeUsageNormalizer.snapshot(
                     from: data,
-                    plan: credential.displayPlan,
+                    plan: plan,
                     observedAt: now()
                 )
             case 401, 403:
@@ -171,6 +182,22 @@ actor ClaudeOAuthConnector: UsageConnector {
         )
     }
 
+    private func fetchProfilePlan(using accessToken: String) async -> String? {
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/profile")!)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
+        request.setValue("claude-code/2.1.212", forHTTPHeaderField: "User-Agent")
+
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse,
+              http.statusCode == 200
+        else { return nil }
+        return ClaudeProfileNormalizer.plan(from: data)
+    }
+
     private static func retryAfter(from response: HTTPURLResponse, now: Date) -> TimeInterval? {
         guard let raw = response.value(forHTTPHeaderField: "retry-after")?
             .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty
@@ -182,6 +209,37 @@ actor ClaudeOAuthConnector: UsageConnector {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss zzz"
         return formatter.date(from: raw).map { max(0, $0.timeIntervalSince(now)) }
+    }
+}
+
+enum ClaudeProfileNormalizer {
+    static func plan(from data: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        let account = root["account"] as? [String: Any]
+        let organization = root["organization"] as? [String: Any]
+        let tier = organization?["rate_limit_tier"] as? String
+        let organizationType = organization?["organization_type"] as? String
+
+        if let tier,
+           let multiplier = tier.range(of: #"\d+x"#, options: .regularExpression)
+        {
+            return "Max \(tier[multiplier])"
+        }
+        if organizationType == "claude_max" || account?["has_claude_max"] as? Bool == true {
+            return "Max"
+        }
+        if organizationType == "claude_pro" || account?["has_claude_pro"] as? Bool == true {
+            return "Pro"
+        }
+        if let organizationType,
+           let suffix = organizationType.split(separator: "_").last,
+           ["team", "enterprise"].contains(suffix)
+        {
+            return suffix.capitalized
+        }
+        return nil
     }
 }
 

@@ -56,6 +56,18 @@ struct ClaudeConnectorTests {
         #expect(credential?.scopes?.contains("user:profile") == true)
     }
 
+    @Test func oauthProfileProvidesTheActualClaudePlan() {
+        let maxData = Data(
+            #"{"account":{"has_claude_max":true,"has_claude_pro":false},"organization":{"organization_type":"claude_max","rate_limit_tier":"default_claude_max_5x"}}"#.utf8
+        )
+        let proData = Data(
+            #"{"account":{"has_claude_max":false,"has_claude_pro":true},"organization":{"organization_type":"claude_pro","rate_limit_tier":null}}"#.utf8
+        )
+
+        #expect(ClaudeProfileNormalizer.plan(from: maxData) == "Max 5x")
+        #expect(ClaudeProfileNormalizer.plan(from: proData) == "Pro")
+    }
+
     @Test func recentStatuslineCanActAsFallback() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

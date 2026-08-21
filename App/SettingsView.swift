@@ -150,30 +150,7 @@ struct SettingsView: View {
             }
 
             Spacer(minLength: 8)
-            connectionPill
         }
-    }
-
-    private var connectionPill: some View {
-        HStack(spacing: 7) {
-            Circle()
-                .fill(connectedProviderCount > 0 ? SettingsPalette.accent : SettingsPalette.faint)
-                .frame(width: 6, height: 6)
-                .shadow(
-                    color: connectedProviderCount > 0 ? SettingsPalette.accent.opacity(0.55) : .clear,
-                    radius: 4
-                )
-
-            Text(assistantConnectionSummary)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(SettingsPalette.buttonText)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 26)
-        .background(Color.white.opacity(0.04), in: Capsule())
-        .overlay { Capsule().stroke(Color.white.opacity(0.07), lineWidth: 1) }
-        .accessibilityElement(children: .combine)
     }
 
     private var assistantsSection: some View {
@@ -540,29 +517,13 @@ struct SettingsView: View {
         let detail = presentation.detail.trimmingCharacters(in: .whitespacesAndNewlines)
         if presentation.isConnected {
             let plan = detail.hasPrefix("Plan ") ? String(detail.dropFirst(5)) : detail
-            return "\(plan) · \(presentation.badge)"
+            let planLabel = plan.localizedCaseInsensitiveContains("plan")
+                || plan == language.text("Connected locally", "Conectado localmente")
+                ? plan
+                : "\(plan) Plan"
+            return "\(planLabel) · \(presentation.badge)"
         }
         return detail
-    }
-
-    private var connectedProviderCount: Int {
-        store.connectionStatuses.filter { status in
-            status.isConnected && providerSelection.isActive(status.id)
-        }.count
-    }
-
-    private var assistantConnectionSummary: String {
-        switch connectedProviderCount {
-        case 0:
-            language.text("No assistants shown", "Ningún asistente visible")
-        case 1:
-            language.text("1 assistant shown", "1 asistente visible")
-        default:
-            language.text(
-                "\(connectedProviderCount) assistants shown",
-                "\(connectedProviderCount) asistentes visibles"
-            )
-        }
     }
 
     private var launchAtLoginDetail: String {
