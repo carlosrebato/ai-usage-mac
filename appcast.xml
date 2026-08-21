@@ -3,14 +3,14 @@
     <channel>
         <title>AI Usage</title>
         <item>
-            <title>0.1.1</title>
-            <pubDate>Tue, 18 Aug 2026 14:41:18 +0200</pubDate>
+            <title>0.1.2</title>
+            <pubDate>Fri, 21 Aug 2026 14:21:44 +0200</pubDate>
             <link>https://github.com/carlosrebato/ai-usage-mac</link>
             <sparkle:fullReleaseNotesLink>https://github.com/carlosrebato/ai-usage-mac/releases</sparkle:fullReleaseNotesLink>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/carlosrebato/ai-usage-mac/releases/download/v0.1.1-beta.4/AI-Usage-0.1.1-beta.4.zip" length="3278965" type="application/octet-stream" sparkle:edSignature="d9pPV0D3WOyjlUXo3paSqL/TLWWUvSKUMOGzZWVx0hmsQzjewPymTWsHSq1QxOpcLuwzCsT/7dO1VdciT6qSDg=="/>
+            <enclosure url="https://github.com/carlosrebato/ai-usage-mac/releases/download/v0.1.2-beta.1/AI-Usage-0.1.2-beta.1.zip" length="3284897" type="application/octet-stream" sparkle:edSignature="jA+b4lpsqvfuaSG25xQrv9s8MTcGG6ygKEYYvdPazbRAqRt382dU5Q3tpSG9ohJvpS1sqx0Ck2inGlJ5IdSkCQ=="/>
         </item>
     </channel>
 </rss>
