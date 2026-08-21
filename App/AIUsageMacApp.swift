@@ -136,10 +136,15 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
                     "observedAt": snapshot?.observedAt.timeIntervalSince1970 ?? 0
                 ]
             }
-            let permissionsPersisted = !enabledProviders.isEmpty && enabledProviders.allSatisfy {
-                ProviderDataAccess.shared.hasUsableAccess(
-                    for: $0 == .claude ? .claude : .codex
-                )
+            let permissionsPersisted = !enabledProviders.isEmpty && enabledProviders.allSatisfy { provider in
+                if ProviderDataAccess.shared.hasUsableAccess(
+                    for: provider == .claude ? .claude : .codex
+                ) {
+                    return true
+                }
+                let snapshot = store.snapshots.first { $0.id == provider }
+                let status = store.connectionStatuses.first { $0.id == provider }
+                return status?.phase == .connected && snapshot?.source == .live
             }
             let hasUsageData = providers.allSatisfy { !($0["percent"] is NSNull) }
             let hasLiveData = providers.allSatisfy {
