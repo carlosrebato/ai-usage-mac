@@ -144,7 +144,8 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let snapshot = store.snapshots.first { $0.id == provider }
                 let status = store.connectionStatuses.first { $0.id == provider }
-                return status?.phase == .connected && snapshot?.source == .live
+                guard snapshot?.highestPercent != nil else { return false }
+                return status?.phase == .connected || status?.phase == .retrying
             }
             let hasUsageData = providers.allSatisfy { !($0["percent"] is NSNull) }
             let hasLiveData = providers.allSatisfy {
