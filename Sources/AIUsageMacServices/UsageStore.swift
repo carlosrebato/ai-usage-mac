@@ -299,9 +299,8 @@ public final class UsageStore: ObservableObject {
     }
 
     /// Recover a long-running menu-bar process whose background timer was
-    /// delayed during sleep or whose previous response requested a long retry.
-    /// A fresh process would try the endpoint immediately; a stale existing
-    /// process should get the same chance, at most once every five minutes.
+    /// delayed during sleep. A stale existing process gets a chance to run any
+    /// due refresh without bypassing the provider's Retry-After deadline.
     public func refreshStaleOnPresentation(now: Date = .now) async {
         while isRefreshing {
             try? await Task.sleep(for: .milliseconds(100))
@@ -314,7 +313,7 @@ public final class UsageStore: ObservableObject {
             return
         }
         lastStalePresentationProbeAt = now
-        await refresh(force: true, allowInteraction: false)
+        await refresh(force: false, allowInteraction: false)
     }
 
     /// OAuth completion and usage availability are not atomic for every provider.

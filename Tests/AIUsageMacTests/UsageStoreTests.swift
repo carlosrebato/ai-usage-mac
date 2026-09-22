@@ -308,6 +308,38 @@ struct UsageStoreTests {
         #expect(snapshot?.weekly.usedPercent == fresh.weekly.usedPercent)
     }
 
+    @Test @MainActor func openingPanelRespectsAnActiveProviderRetryDeadline() async throws {
+        let cache = temporaryCache()
+        let old = ProviderUsageSnapshot(
+            id: .codex,
+            session: UsageWindow(usedPercent: 50, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: 30, resetsAt: nil),
+            observedAt: .now.addingTimeInterval(-4 * 60 * 60),
+            source: .live,
+            message: nil
+        )
+        try cache.save([old])
+        let connector = ScriptedConnector(
+            providerID: .codex,
+            steps: [
+                .failure(.rateLimited(retryAfter: 3_600)),
+                .success(codexSnapshot(percent: 60, source: .live))
+            ]
+        )
+        let store = UsageStore(
+            codexConnector: connector,
+            claudeConnector: nil,
+            cache: cache
+        )
+
+        await store.refresh()
+        await store.refreshStaleOnPresentation()
+
+        #expect(store.snapshots.first { $0.id == .codex }?.source == .cached)
+        await store.refresh(force: true)
+        #expect(store.snapshots.first { $0.id == .codex }?.source == .live)
+    }
+
     @Test @MainActor func liveRefreshDoesNotErasePreviouslyIndexedWeeklyTotals() async throws {
         let cache = temporaryCache()
         let totals = WeeklyUsageTotals(
