@@ -34,8 +34,10 @@ if printf '%s' "$NORMALIZED_ENTITLEMENTS" | grep -Fq \
   fail "get-task-allow is enabled; this is a development build"
 fi
 
-lipo "$EXECUTABLE" -verify_arch arm64 x86_64 >/dev/null 2>&1 || \
-  fail "universal arm64 + x86_64 executable required"
+lipo "$EXECUTABLE" -verify_arch arm64 >/dev/null 2>&1 || \
+  fail "arm64 executable slice required"
+lipo "$EXECUTABLE" -verify_arch x86_64 >/dev/null 2>&1 || \
+  fail "x86_64 executable slice required"
 xcrun stapler validate "$APP_PATH" >/dev/null || fail "notarization ticket is missing or invalid"
 spctl --assess --type execute --verbose=2 "$APP_PATH" || fail "Gatekeeper assessment failed"
 
