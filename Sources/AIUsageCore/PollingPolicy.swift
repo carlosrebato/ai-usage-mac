@@ -9,8 +9,8 @@ public enum PollingPolicy {
 
         switch severity {
         case .normal: return .seconds(300)
-        case .warning: return .seconds(180)
-        case .critical: return .seconds(120)
+        case .warning: return .seconds(300)
+        case .critical: return .seconds(300)
         case .unavailable: return .seconds(300)
         }
     }

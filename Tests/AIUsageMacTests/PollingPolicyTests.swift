@@ -3,10 +3,10 @@ import Testing
 @testable import AIUsageCore
 
 struct PollingPolicyTests {
-    @Test func pollingAcceleratesNearTheLimit() {
+    @Test func pollingDoesNotAccelerateIntoProviderThrottling() {
         #expect(PollingPolicy.interval(for: .normal, consecutiveFailures: 0) == .seconds(300))
-        #expect(PollingPolicy.interval(for: .warning, consecutiveFailures: 0) == .seconds(180))
-        #expect(PollingPolicy.interval(for: .critical, consecutiveFailures: 0) == .seconds(120))
+        #expect(PollingPolicy.interval(for: .warning, consecutiveFailures: 0) == .seconds(300))
+        #expect(PollingPolicy.interval(for: .critical, consecutiveFailures: 0) == .seconds(300))
     }
 
     @Test func failuresUseBoundedExponentialBackoff() {
