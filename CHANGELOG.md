@@ -16,7 +16,7 @@ All notable changes to AI Usage for Mac are documented here.
 - Reduce automatic polling pressure; treat old live readings as saved data and
   stop showing expired reset times as "0m".
 - Explain an empty seven-day chart instead of implying zero usage when no
-  verified history is available.
+  verified data can be shown.
 
 ## 0.1.3-beta.1 — 2026-09-22
 

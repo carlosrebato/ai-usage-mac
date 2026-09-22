@@ -480,8 +480,8 @@ private struct UsageTrendChart: View {
         .overlay {
             if !hasVisibleSeries {
                 Text(language.text(
-                    "No verified usage history yet",
-                    "Todavía no hay historial de uso verificado"
+                    "No verified data to show",
+                    "No hay datos verificados que mostrar"
                 ))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(UsageTheme.mutedText)
