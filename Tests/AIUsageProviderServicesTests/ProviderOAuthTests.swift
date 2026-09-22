@@ -209,6 +209,63 @@ struct ProviderOAuthTests {
         #expect(snapshot.weekly.resetsAt != nil)
     }
 
+    @Test func aThrottledAdapterCanProbeAgainAfterTheStoreDecidesToRetry() async throws {
+        let token = StoredProviderToken(
+            accessToken: "claude-token",
+            refreshToken: "refresh",
+            idToken: nil,
+            expiresAt: Date(timeIntervalSince1970: 10_000),
+            accountID: nil,
+            scopes: ["user:profile"]
+        )
+        let account = ProviderOAuthAccount(
+            configuration: .claude,
+            vault: MemoryVault(storage: MemoryVaultStorage(token)),
+            session: testSession(),
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+        let requests = LockedCounter()
+        OAuthURLProtocol.handler = { request in
+            if request.url?.path == "/usage" {
+                requests.increment()
+                if requests.value == 1 {
+                    return (
+                        HTTPURLResponse(
+                            url: request.url!, statusCode: 429, httpVersion: nil,
+                            headerFields: ["Retry-After": "3600"]
+                        )!,
+                        Data()
+                    )
+                }
+            }
+            return (
+                HTTPURLResponse(
+                    url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil
+                )!,
+                request.url?.path == "/profile"
+                    ? Data(#"{"organization":{"organization_type":"claude_pro"}}"#.utf8)
+                    : Data(#"{"five_hour":{"utilization":4,"resets_at":"2026-09-22T13:45:12Z"},"seven_day":{"utilization":3,"resets_at":"2026-09-29T00:00:00Z"}}"#.utf8)
+            )
+        }
+        let adapter = ClaudeDirectAdapter(
+            account: account,
+            session: testSession(),
+            endpoint: URL(string: "https://example.com/usage")!,
+            profileEndpoint: URL(string: "https://example.com/profile")!,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+
+        do {
+            _ = try await adapter.fetchSnapshot()
+            Issue.record("First request should be throttled")
+        } catch DirectUsageError.rateLimited(let retryAfter) {
+            #expect(retryAfter == 3_600)
+        }
+        let recovered = try await adapter.fetchSnapshot()
+        #expect(recovered.source == .live)
+        #expect(requests.value == 2)
+    }
+
     private func testSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [OAuthURLProtocol.self]

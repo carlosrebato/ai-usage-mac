@@ -131,7 +131,7 @@ public struct UsageDetailedMetrics: View {
                 language: language,
                 providers: Set(ordered.map(\.id)),
                 currentDayProviders: Set(
-                    ordered.filter { $0.source != .unavailable && $0.highestPercent != nil }
+                    ordered.filter { $0.source == .live && !$0.isStale(at: now) && $0.highestPercent != nil }
                         .map(\.id)
                 )
             )
@@ -156,7 +156,8 @@ public struct UsageDetailedMetrics: View {
                 Spacer()
                 UsageStatusDot(
                     severity: UsageSeverity.forPercent(primary.usedPercent),
-                    color: snapshot.source == .cached ? UsageTheme.cached : nil,
+                    color: snapshot.source == .cached || snapshot.isStale(at: now)
+                        ? UsageTheme.cached : nil,
                     size: 8
                 )
             }
@@ -234,7 +235,7 @@ public struct UsageDetailedMetrics: View {
                         tokenBreakdown($0, language: language)
                     } ?? missingLocalHistoryHelp(language: language))
                 Spacer()
-                if snapshot.source == .cached {
+                if snapshot.source == .cached || snapshot.isStale(at: now) {
                     Label {
                         Text(snapshot.observedAt.formatted(date: .omitted, time: .shortened))
                     } icon: {
@@ -476,6 +477,21 @@ private struct UsageTrendChart: View {
                 )
             }
         }
+        .overlay {
+            if !hasVisibleSeries {
+                Text(language.text(
+                    "No verified usage history yet",
+                    "Todavía no hay historial de uso verificado"
+                ))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(UsageTheme.mutedText)
+                .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var hasVisibleSeries: Bool {
+        providers.contains { provider in hasSeries(for: provider) }
     }
 
     private func drawDottedGuide(
@@ -687,7 +703,7 @@ public struct UsageFloatingMetrics: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(UsageTheme.secondaryText)
                         Spacer()
-                        if snapshot.source == .cached {
+                        if snapshot.source == .cached || snapshot.isStale(at: now) {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(UsageTheme.cached)

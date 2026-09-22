@@ -53,7 +53,6 @@ public actor ClaudeDirectAdapter: DirectUsageAdapter {
     private let endpoint: URL
     private let profileEndpoint: URL
     private let now: @Sendable () -> Date
-    private var rateLimitedUntil: Date?
     private var cachedPlan: String?
 
     public init(
@@ -72,9 +71,6 @@ public actor ClaudeDirectAdapter: DirectUsageAdapter {
 
     public func fetchSnapshot() async throws -> ProviderUsageSnapshot {
         try await ProviderKillSwitch.shared.check(.claude)
-        if let rateLimitedUntil, now() < rateLimitedUntil {
-            throw DirectUsageError.rateLimited(retryAfter: rateLimitedUntil.timeIntervalSince(now()))
-        }
         guard let credential = try await account.credential() else {
             throw DirectUsageError.notAuthenticated
         }
@@ -94,7 +90,6 @@ public actor ClaudeDirectAdapter: DirectUsageAdapter {
         let (data, response) = try await Self.perform(request, session: session)
         switch response.statusCode {
         case 200:
-            rateLimitedUntil = nil
             let plan: String?
             if let cachedPlan {
                 plan = cachedPlan
@@ -111,7 +106,6 @@ public actor ClaudeDirectAdapter: DirectUsageAdapter {
             throw DirectUsageError.rejected(status: response.statusCode)
         case 429:
             let retry = max(Self.retryAfter(from: response, now: now()) ?? 0, 5 * 60)
-            rateLimitedUntil = now().addingTimeInterval(retry)
             throw DirectUsageError.rateLimited(retryAfter: retry)
         default:
             throw DirectUsageError.rejected(status: response.statusCode)
@@ -166,7 +160,6 @@ public actor CodexDirectAdapter: DirectUsageAdapter {
     private let session: URLSession
     private let endpoint: URL
     private let now: @Sendable () -> Date
-    private var rateLimitedUntil: Date?
 
     public init(
         account: ProviderOAuthAccount = ProviderAccounts.shared.codex,
@@ -182,9 +175,6 @@ public actor CodexDirectAdapter: DirectUsageAdapter {
 
     public func fetchSnapshot() async throws -> ProviderUsageSnapshot {
         try await ProviderKillSwitch.shared.check(.codex)
-        if let rateLimitedUntil, now() < rateLimitedUntil {
-            throw DirectUsageError.rateLimited(retryAfter: rateLimitedUntil.timeIntervalSince(now()))
-        }
         guard let credential = try await account.credential() else {
             throw DirectUsageError.notAuthenticated
         }
@@ -203,13 +193,11 @@ public actor CodexDirectAdapter: DirectUsageAdapter {
         let (data, response) = try await perform(request)
         switch response.statusCode {
         case 200:
-            rateLimitedUntil = nil
             return try CodexDirectUsageNormalizer.snapshot(from: data, observedAt: now())
         case 401, 403:
             throw DirectUsageError.rejected(status: response.statusCode)
         case 429:
             let retry = max(HTTPRetryAfter.value(from: response, now: now()) ?? 0, 5 * 60)
-            rateLimitedUntil = now().addingTimeInterval(retry)
             throw DirectUsageError.rateLimited(retryAfter: retry)
         default:
             throw DirectUsageError.rejected(status: response.statusCode)

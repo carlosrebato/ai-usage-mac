@@ -10,6 +10,13 @@ All notable changes to AI Usage for Mac are documented here.
   instead of silently removing them from the dashboard.
 - Offer a clear read-only token-history recovery action for both Claude and
   Codex when their local folder permission is missing or no longer usable.
+- Recover stale readings when the menu opens after a long sleep or provider
+  throttle, without leaving a long-running process trapped behind a second
+  in-memory cooldown.
+- Reduce automatic polling pressure; treat old live readings as saved data and
+  stop showing expired reset times as "0m".
+- Explain an empty seven-day chart instead of implying zero usage when no
+  verified history is available.
 
 ## 0.1.3-beta.1 — 2026-09-22
 

@@ -283,6 +283,31 @@ struct UsageStoreTests {
         #expect(store.connectionStatuses.first { $0.id == .codex }?.phase == .connected)
     }
 
+    @Test @MainActor func openingStalePanelRecoversWithoutWaitingForBackgroundTimer() async throws {
+        let cache = temporaryCache()
+        let old = ProviderUsageSnapshot(
+            id: .codex,
+            session: UsageWindow(usedPercent: 55, resetsAt: .now.addingTimeInterval(-60)),
+            weekly: UsageWindow(usedPercent: 30, resetsAt: nil),
+            observedAt: .now.addingTimeInterval(-4 * 60 * 60),
+            source: .live,
+            message: nil
+        )
+        try cache.save([old])
+        let fresh = codexSnapshot(percent: 60, source: .live)
+        let store = UsageStore(
+            codexConnector: FixedConnector(snapshot: fresh),
+            claudeConnector: nil,
+            cache: cache
+        )
+
+        await store.refreshStaleOnPresentation()
+
+        let snapshot = store.snapshots.first { $0.id == .codex }
+        #expect(snapshot?.source == .live)
+        #expect(snapshot?.weekly.usedPercent == fresh.weekly.usedPercent)
+    }
+
     @Test @MainActor func liveRefreshDoesNotErasePreviouslyIndexedWeeklyTotals() async throws {
         let cache = temporaryCache()
         let totals = WeeklyUsageTotals(

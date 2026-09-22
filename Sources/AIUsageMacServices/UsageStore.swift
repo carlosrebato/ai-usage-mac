@@ -19,6 +19,7 @@ public final class UsageStore: ObservableObject {
     private var verifyingProviders: Set<UsageProviderID> = []
     private var consecutiveFailures: [UsageProviderID: Int] = [:]
     private var nextRefreshAt: [UsageProviderID: Date] = [:]
+    private var lastStalePresentationProbeAt: Date?
 
     public var snapshots: [ProviderUsageSnapshot] {
         providerStates.map(\.snapshot)
@@ -297,6 +298,25 @@ public final class UsageStore: ObservableObject {
         await refresh(force: force, allowInteraction: allowInteraction, provider: provider)
     }
 
+    /// Recover a long-running menu-bar process whose background timer was
+    /// delayed during sleep or whose previous response requested a long retry.
+    /// A fresh process would try the endpoint immediately; a stale existing
+    /// process should get the same chance, at most once every five minutes.
+    public func refreshStaleOnPresentation(now: Date = .now) async {
+        while isRefreshing {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        guard snapshots.contains(where: {
+            $0.highestPercent != nil && $0.isStale(at: now)
+        }) else { return }
+        if let lastStalePresentationProbeAt,
+           now.timeIntervalSince(lastStalePresentationProbeAt) < 5 * 60 {
+            return
+        }
+        lastStalePresentationProbeAt = now
+        await refresh(force: true, allowInteraction: false)
+    }
+
     /// OAuth completion and usage availability are not atomic for every provider.
     /// Keep the UI in a truthful verifying state while the new session propagates.
     func confirmAuthorization(
@@ -419,7 +439,10 @@ public final class UsageStore: ObservableObject {
                 guard let self else { return }
                 await self.refresh(force: false, allowInteraction: false)
                 let next = self.nextRefreshAt.values.min() ?? .now.addingTimeInterval(30)
-                let delay = max(1, next.timeIntervalSinceNow)
+                // A foreground probe can replace a long server retry with a
+                // much earlier successful refresh. Recheck the schedule every
+                // minute rather than sleeping on the obsolete deadline.
+                let delay = min(60, max(1, next.timeIntervalSinceNow))
                 try? await Task.sleep(for: .seconds(delay))
             }
         }

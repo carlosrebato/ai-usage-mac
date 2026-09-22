@@ -47,7 +47,7 @@ public struct UsageFreshness: Equatable, Sendable {
         let available = snapshots.filter {
             $0.highestPercent != nil && $0.source != .unavailable
         }
-        let cached = available.filter { $0.source == .cached }
+        let cached = available.filter { $0.source == .cached || $0.isStale(at: now) }
         let relevant = cached.isEmpty ? available : cached
         let observedAt = relevant.map(\.observedAt).min() ?? now
 
