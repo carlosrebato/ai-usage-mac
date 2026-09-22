@@ -19,6 +19,7 @@ public final class UsageStore: ObservableObject {
     private var verifyingProviders: Set<UsageProviderID> = []
     private var consecutiveFailures: [UsageProviderID: Int] = [:]
     private var nextRefreshAt: [UsageProviderID: Date] = [:]
+    private var lastStalePresentationProbeAt: Date?
 
     public var snapshots: [ProviderUsageSnapshot] {
         providerStates.map(\.snapshot)
@@ -257,6 +258,13 @@ public final class UsageStore: ObservableObject {
                 let unresolved = fallback
                     ?? Self.unavailable(outcome.providerID, now: .now, message: message)
                 replace(snapshot: unresolved, status: status)
+                // A throttled provider with a saved quota is still connected.
+                // Local token totals do not depend on the provider API, so keep
+                // enriching them instead of making cost/tokens disappear while
+                // the remote endpoint is temporarily rate limited.
+                if status.isConnected {
+                    snapshotsNeedingMetrics.append(unresolved)
+                }
 
                 let backoff = Self.seconds(
                     PollingPolicy.interval(for: .unavailable, consecutiveFailures: failures)
@@ -288,6 +296,24 @@ public final class UsageStore: ObservableObject {
             try? await Task.sleep(for: .milliseconds(100))
         }
         await refresh(force: force, allowInteraction: allowInteraction, provider: provider)
+    }
+
+    /// Recover a long-running menu-bar process whose background timer was
+    /// delayed during sleep. A stale existing process gets a chance to run any
+    /// due refresh without bypassing the provider's Retry-After deadline.
+    public func refreshStaleOnPresentation(now: Date = .now) async {
+        while isRefreshing {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        guard snapshots.contains(where: {
+            $0.highestPercent != nil && $0.isStale(at: now)
+        }) else { return }
+        if let lastStalePresentationProbeAt,
+           now.timeIntervalSince(lastStalePresentationProbeAt) < 5 * 60 {
+            return
+        }
+        lastStalePresentationProbeAt = now
+        await refresh(force: false, allowInteraction: false)
     }
 
     /// OAuth completion and usage availability are not atomic for every provider.
@@ -412,7 +438,10 @@ public final class UsageStore: ObservableObject {
                 guard let self else { return }
                 await self.refresh(force: false, allowInteraction: false)
                 let next = self.nextRefreshAt.values.min() ?? .now.addingTimeInterval(30)
-                let delay = max(1, next.timeIntervalSinceNow)
+                // A foreground probe can replace a long server retry with a
+                // much earlier successful refresh. Recheck the schedule every
+                // minute rather than sleeping on the obsolete deadline.
+                let delay = min(60, max(1, next.timeIntervalSinceNow))
                 try? await Task.sleep(for: .seconds(delay))
             }
         }

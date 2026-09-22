@@ -25,8 +25,8 @@ struct SettingsView: View {
     @AppStorage(AppPreferenceKey.showResetTimesInMenuBar) private var showResetTimes = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
     @StateObject private var launchAtLogin = LaunchAtLoginController()
-    @State private var isAddingClaudeTokenHistory = false
-    @State private var claudeTokenHistoryError: String?
+    @State private var tokenHistoryProvider: UsageProviderID?
+    @State private var tokenHistoryErrors: [UsageProviderID: String] = [:]
     @State private var diagnosticExportError: String?
 
     var body: some View {
@@ -226,8 +226,8 @@ struct SettingsView: View {
                     .padding(.top, 4)
                 }
 
-                if presentation.isConnected && needsClaudeTokenAccess(provider) {
-                    if isAddingClaudeTokenHistory {
+                if presentation.isConnected && needsTokenHistoryAccess(provider) {
+                    if tokenHistoryProvider == provider {
                         ProgressView()
                             .controlSize(.small)
                             .tint(SettingsPalette.accent)
@@ -237,7 +237,7 @@ struct SettingsView: View {
                             "Add token history",
                             "Añadir histórico de tokens"
                         )) {
-                            Task { await addClaudeTokenHistory() }
+                            Task { await addTokenHistory(for: provider) }
                         }
                         .buttonStyle(.plain)
                         .font(.system(size: 11, weight: .semibold))
@@ -246,8 +246,8 @@ struct SettingsView: View {
                     }
                 }
 
-                if provider == .claude, let claudeTokenHistoryError {
-                    Text(claudeTokenHistoryError)
+                if let tokenHistoryError = tokenHistoryErrors[provider] {
+                    Text(tokenHistoryError)
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(UsageTheme.red)
                         .lineLimit(2)
@@ -285,23 +285,25 @@ struct SettingsView: View {
         }
     }
 
-    private func needsClaudeTokenAccess(_ provider: UsageProviderID) -> Bool {
-        provider == .claude
-            && ProviderDataAccess.shared.hasStoredAccess(for: .claude)
-            && !ProviderDataAccess.shared.hasUsableAccess(for: .claudeCode)
+    private func needsTokenHistoryAccess(_ provider: UsageProviderID) -> Bool {
+        !ProviderDataAccess.shared.hasUsableAccess(for: metricsDirectory(for: provider))
     }
 
     @MainActor
-    private func addClaudeTokenHistory() async {
-        claudeTokenHistoryError = nil
-        isAddingClaudeTokenHistory = true
-        defer { isAddingClaudeTokenHistory = false }
+    private func addTokenHistory(for provider: UsageProviderID) async {
+        tokenHistoryErrors[provider] = nil
+        tokenHistoryProvider = provider
+        defer { tokenHistoryProvider = nil }
         do {
-            guard try await ClaudeCodeMetricsAccessPicker.requestAccess() else { return }
+            guard try await ProviderDataAccessPicker.requestAccess(for: provider) else { return }
             await store.refreshWhenIdle(force: true, allowInteraction: false)
         } catch {
-            claudeTokenHistoryError = error.localizedDescription
+            tokenHistoryErrors[provider] = error.localizedDescription
         }
+    }
+
+    private func metricsDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {
+        provider == .claude ? .claudeCode : .codex
     }
 
     private var launchSection: some View {

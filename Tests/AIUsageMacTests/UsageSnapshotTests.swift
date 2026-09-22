@@ -126,6 +126,21 @@ struct UsageSnapshotTests {
         #expect(freshness.date == cached.observedAt)
     }
 
+    @Test func oldLiveObservationIsPresentedAsCached() {
+        let now = Date(timeIntervalSince1970: 2_000)
+        let oldLive = snapshot(observedAt: now.addingTimeInterval(-11 * 60), source: .live)
+
+        let freshness = UsageFreshness(snapshots: [oldLive], now: now)
+
+        #expect(freshness.kind == .cached)
+        #expect(freshness.date == oldLive.observedAt)
+    }
+
+    @Test func elapsedResetIsNotShownAsZeroMinutes() {
+        let now = Date(timeIntervalSince1970: 2_000)
+        #expect(UsageResetFormatter.string(until: now.addingTimeInterval(-60), relativeTo: now) == "—")
+    }
+
     @Test func resetCountdownUsesDaysAfterTwentyFourHours() {
         let now = Date(timeIntervalSince1970: 1_000)
 

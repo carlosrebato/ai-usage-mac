@@ -131,7 +131,7 @@ public struct UsageDetailedMetrics: View {
                 language: language,
                 providers: Set(ordered.map(\.id)),
                 currentDayProviders: Set(
-                    ordered.filter { $0.source != .unavailable && $0.highestPercent != nil }
+                    ordered.filter { $0.source == .live && !$0.isStale(at: now) && $0.highestPercent != nil }
                         .map(\.id)
                 )
             )
@@ -156,7 +156,8 @@ public struct UsageDetailedMetrics: View {
                 Spacer()
                 UsageStatusDot(
                     severity: UsageSeverity.forPercent(primary.usedPercent),
-                    color: snapshot.source == .cached ? UsageTheme.cached : nil,
+                    color: snapshot.source == .cached || snapshot.isStale(at: now)
+                        ? UsageTheme.cached : nil,
                     size: 8
                 )
             }
@@ -217,17 +218,24 @@ public struct UsageDetailedMetrics: View {
                     label: language.text("RESETS", "REINICIA"),
                     value: UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now)
                 )
-                if let totals = snapshot.weeklyTotals {
-                    metric(
-                        label: language.text("EST. COST", "COSTE EST."),
-                        value: equivalentCost(totals, language: language)
-                    )
-                        .help(equivalentCostHelp(totals, language: language))
-                    metric(label: "TOKENS", value: compactTokens(totals.totalTokens))
-                        .help(tokenBreakdown(totals, language: language))
-                }
+                metric(
+                    label: language.text("EST. COST", "COSTE EST."),
+                    value: snapshot.weeklyTotals.map {
+                        equivalentCost($0, language: language)
+                    } ?? "—"
+                )
+                    .help(snapshot.weeklyTotals.map {
+                        equivalentCostHelp($0, language: language)
+                    } ?? missingLocalHistoryHelp(language: language))
+                metric(
+                    label: "TOKENS",
+                    value: snapshot.weeklyTotals.map { compactTokens($0.totalTokens) } ?? "—"
+                )
+                    .help(snapshot.weeklyTotals.map {
+                        tokenBreakdown($0, language: language)
+                    } ?? missingLocalHistoryHelp(language: language))
                 Spacer()
-                if snapshot.source == .cached {
+                if snapshot.source == .cached || snapshot.isStale(at: now) {
                     Label {
                         Text(snapshot.observedAt.formatted(date: .omitted, time: .shortened))
                     } icon: {
@@ -469,6 +477,21 @@ private struct UsageTrendChart: View {
                 )
             }
         }
+        .overlay {
+            if !hasVisibleSeries {
+                Text(language.text(
+                    "No verified data to show",
+                    "No hay datos verificados que mostrar"
+                ))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(UsageTheme.mutedText)
+                .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var hasVisibleSeries: Bool {
+        providers.contains { provider in hasSeries(for: provider) }
     }
 
     private func drawDottedGuide(
@@ -680,7 +703,7 @@ public struct UsageFloatingMetrics: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(UsageTheme.secondaryText)
                         Spacer()
-                        if snapshot.source == .cached {
+                        if snapshot.source == .cached || snapshot.isStale(at: now) {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(UsageTheme.cached)
@@ -912,6 +935,13 @@ private func equivalentCostHelp(
     return language.text(
         "Estimated equivalent cost using public API pricing; this is not an actual charge.",
         "Coste equivalente estimado con las tarifas API públicas; no representa un cargo real."
+    )
+}
+
+private func missingLocalHistoryHelp(language: AppLanguage) -> String {
+    language.text(
+        "Token history is unavailable. Add read-only access in Settings to restore token totals and estimated cost.",
+        "El histórico de tokens no está disponible. Añade acceso de solo lectura en Ajustes para recuperar los tokens y el coste estimado."
     )
 }
 

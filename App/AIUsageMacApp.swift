@@ -343,6 +343,9 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             constrainPopoverToVisibleScreen(relativeTo: button)
             installPopoverDismissMonitors()
+            if UserDefaults.standard.object(forKey: AppPreferenceKey.automaticRefresh) as? Bool ?? true {
+                Task { [store] in await store.refreshStaleOnPresentation() }
+            }
         }
     }
 
@@ -590,7 +593,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     ) -> String {
         snapshots.map { snapshot in
             let percent = snapshot.menuBarPercent.map { "\(Int($0.rounded()))%" } ?? "—"
-            let freshness = snapshot.source == .cached
+            let freshness = snapshot.source == .cached || snapshot.isStale(at: .now)
                 ? ", \(language.text("saved data", "dato guardado"))"
                 : ""
             let reset = showResetTimes
@@ -737,7 +740,7 @@ private struct MenuBarUsageImageContent: View {
     }
 
     private func severityDot(_ snapshot: AIUsageCore.ProviderUsageSnapshot) -> some View {
-        let color = snapshot.source == .cached
+        let color = snapshot.source == .cached || snapshot.isStale(at: now)
             ? AIUsageDesignSystem.UsageTheme.cached
             : AIUsageDesignSystem.UsageTheme.severity(
                 AIUsageCore.UsageSeverity.forPercent(snapshot.menuBarPercent)

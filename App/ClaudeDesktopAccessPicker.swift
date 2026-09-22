@@ -8,9 +8,13 @@ enum ProviderDataAccessPicker {
     static func requestAccess(for provider: UsageProviderID) async throws -> Bool {
         let dataDirectory: ProviderDataDirectory = provider == .claude ? .claudeCode : .codex
         let providerName = provider == .claude ? "Claude" : "Codex"
+        let folderName = provider == .claude ? ".claude" : ".codex"
         let language = AppLanguage.current
         let panel = NSOpenPanel()
-        panel.title = language.text("Connect \(providerName)", "Conectar \(providerName)")
+        panel.title = language.text(
+            "Add \(providerName) token history",
+            "Añadir histórico de tokens de \(providerName)"
+        )
         panel.message = language.text(
             provider == .claude
                 ? "Select your .claude folder. AI Usage will only read numeric usage counters for local history and cost estimates."
@@ -19,7 +23,7 @@ enum ProviderDataAccessPicker {
                 ? "Selecciona tu carpeta .claude. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
                 : "Selecciona tu carpeta .codex. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
         )
-        panel.prompt = language.text("Grant read-only access", "Conceder acceso de solo lectura")
+        panel.prompt = language.text("Use \(folderName)", "Usar \(folderName)")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -33,8 +37,13 @@ enum ProviderDataAccessPicker {
         } else {
             suggested = home.appendingPathComponent(".codex", isDirectory: true)
         }
-        panel.directoryURL = ProviderDataAccess.shared.resolvedURL(for: dataDirectory)
+        let selectedFolder = ProviderDataAccess.shared.resolvedURL(for: dataDirectory)
             ?? suggested
+        // Open at the parent and preselect the hidden provider folder so the
+        // required macOS consent is clear without making people navigate to a
+        // hidden directory by hand.
+        panel.directoryURL = selectedFolder.deletingLastPathComponent()
+        panel.nameFieldStringValue = selectedFolder.lastPathComponent
 
         let response: NSApplication.ModalResponse = await withCheckedContinuation { continuation in
             panel.begin { continuation.resume(returning: $0) }
@@ -55,33 +64,6 @@ enum ClaudeDesktopAccessPicker {
 @MainActor
 enum ClaudeCodeMetricsAccessPicker {
     static func requestAccess() async throws -> Bool {
-        let language = AppLanguage.current
-        let panel = NSOpenPanel()
-        panel.title = language.text("Add Claude token history", "Añadir histórico de tokens de Claude")
-        panel.message = language.text(
-            "AI Usage found your Claude data folder. Confirm read-only access to calculate token totals and estimated API-equivalent cost.",
-            "AI Usage ha encontrado tu carpeta de datos de Claude. Confirma el acceso de solo lectura para calcular tokens y el coste equivalente estimado de API."
-        )
-        panel.prompt = language.text("Use .claude", "Usar .claude")
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.resolvesAliases = true
-        panel.showsHiddenFiles = true
-        let suggestedFolder = ProviderDataAccess.shared.resolvedURL(for: .claudeCode)
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".claude", isDirectory: true)
-        // Open at the parent and preselect the hidden folder. This keeps the
-        // mandatory macOS consent step while avoiding Finder shortcuts or
-        // asking the user to navigate hidden files manually.
-        panel.directoryURL = suggestedFolder.deletingLastPathComponent()
-        panel.nameFieldStringValue = suggestedFolder.lastPathComponent
-
-        let response: NSApplication.ModalResponse = await withCheckedContinuation { continuation in
-            panel.begin { continuation.resume(returning: $0) }
-        }
-        guard response == .OK, let folder = panel.url else { return false }
-        try ProviderDataAccess.shared.saveAccess(to: folder, for: .claudeCode)
-        return true
+        try await ProviderDataAccessPicker.requestAccess(for: .claude)
     }
 }

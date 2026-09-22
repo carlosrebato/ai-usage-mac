@@ -106,6 +106,18 @@ private actor RecordingMetricsReader: LocalUsageMetricsReading {
     }
 }
 
+private struct FixedMetricsReader: LocalUsageMetricsReading {
+    let totals: WeeklyUsageTotals
+
+    func weeklyTotals(
+        for _: UsageProviderID,
+        periodStart _: Date,
+        periodEnd _: Date
+    ) async -> WeeklyUsageTotals? {
+        totals
+    }
+}
+
 private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     private var weeklyCalls = 0
     private var firstCallContinuation: CheckedContinuation<Void, Never>?
@@ -134,9 +146,9 @@ private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     }
 
     func waitForFirstCall() async -> Bool {
-        for _ in 0..<10_000 {
+        for _ in 0..<500 {
             if weeklyCalls >= 1 { return true }
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
         }
         return false
     }
@@ -147,9 +159,9 @@ private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     }
 
     func waitForWeeklyCalls(_ count: Int) async -> Bool {
-        for _ in 0..<10_000 {
+        for _ in 0..<500 {
             if weeklyCalls >= count { return true }
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
         }
         return false
     }
@@ -271,6 +283,63 @@ struct UsageStoreTests {
         #expect(store.connectionStatuses.first { $0.id == .codex }?.phase == .connected)
     }
 
+    @Test @MainActor func openingStalePanelRecoversWithoutWaitingForBackgroundTimer() async throws {
+        let cache = temporaryCache()
+        let old = ProviderUsageSnapshot(
+            id: .codex,
+            session: UsageWindow(usedPercent: 55, resetsAt: .now.addingTimeInterval(-60)),
+            weekly: UsageWindow(usedPercent: 30, resetsAt: nil),
+            observedAt: .now.addingTimeInterval(-4 * 60 * 60),
+            source: .live,
+            message: nil
+        )
+        try cache.save([old])
+        let fresh = codexSnapshot(percent: 60, source: .live)
+        let store = UsageStore(
+            codexConnector: FixedConnector(snapshot: fresh),
+            claudeConnector: nil,
+            cache: cache
+        )
+
+        await store.refreshStaleOnPresentation()
+
+        let snapshot = store.snapshots.first { $0.id == .codex }
+        #expect(snapshot?.source == .live)
+        #expect(snapshot?.weekly.usedPercent == fresh.weekly.usedPercent)
+    }
+
+    @Test @MainActor func openingPanelRespectsAnActiveProviderRetryDeadline() async throws {
+        let cache = temporaryCache()
+        let old = ProviderUsageSnapshot(
+            id: .codex,
+            session: UsageWindow(usedPercent: 50, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: 30, resetsAt: nil),
+            observedAt: .now.addingTimeInterval(-4 * 60 * 60),
+            source: .live,
+            message: nil
+        )
+        try cache.save([old])
+        let connector = ScriptedConnector(
+            providerID: .codex,
+            steps: [
+                .failure(.rateLimited(retryAfter: 3_600)),
+                .success(codexSnapshot(percent: 60, source: .live))
+            ]
+        )
+        let store = UsageStore(
+            codexConnector: connector,
+            claudeConnector: nil,
+            cache: cache
+        )
+
+        await store.refresh()
+        await store.refreshStaleOnPresentation()
+
+        #expect(store.snapshots.first { $0.id == .codex }?.source == .cached)
+        await store.refresh(force: true)
+        #expect(store.snapshots.first { $0.id == .codex }?.source == .live)
+    }
+
     @Test @MainActor func liveRefreshDoesNotErasePreviouslyIndexedWeeklyTotals() async throws {
         let cache = temporaryCache()
         let totals = WeeklyUsageTotals(
@@ -328,6 +397,17 @@ struct UsageStoreTests {
 
     @Test @MainActor func rateLimitKeepsAConnectedCachedStateAndPlan() async throws {
         let cache = temporaryCache()
+        let localTotals = WeeklyUsageTotals(
+            inputTokens: 1_000,
+            cachedInputTokens: 2_000,
+            cacheWriteTokens: 300,
+            outputTokens: 400,
+            reasoningTokens: 100,
+            equivalentCostUSD: 1.23,
+            hasUnpricedModels: false,
+            periodStart: Date.now.addingTimeInterval(-7 * 24 * 60 * 60),
+            periodEnd: .now
+        )
         let previous = ProviderUsageSnapshot(
             id: .claude,
             session: UsageWindow(
@@ -349,10 +429,14 @@ struct UsageStoreTests {
                 providerID: .claude,
                 error: .rateLimited(retryAfter: 300)
             ),
-            cache: cache
+            cache: cache,
+            metricsReader: FixedMetricsReader(totals: localTotals)
         )
 
         await store.refresh(provider: .claude)
+        for _ in 0..<50 where store.snapshots.first(where: { $0.id == .claude })?.weeklyTotals == nil {
+            await Task.yield()
+        }
 
         let status = store.connectionStatuses.first { $0.id == .claude }
         let snapshot = store.snapshots.first { $0.id == .claude }
@@ -363,6 +447,7 @@ struct UsageStoreTests {
         #expect(snapshot?.message == "Plan Max 5x")
         #expect(snapshot?.session.resetsAt == previous.session.resetsAt)
         #expect(snapshot?.weekly.resetsAt == previous.weekly.resetsAt)
+        #expect(snapshot?.weeklyTotals == localTotals)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
