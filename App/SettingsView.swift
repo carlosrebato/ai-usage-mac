@@ -1,8 +1,10 @@
 import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
+import AIUsageProviderServices
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import WidgetKit
 
 struct SettingsView: View {
@@ -11,6 +13,7 @@ struct SettingsView: View {
         let badge: String
         let color: Color
         let isConnected: Bool
+        let isBusy: Bool
     }
 
     @EnvironmentObject private var store: UsageStore
@@ -24,6 +27,7 @@ struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginController()
     @State private var isAddingClaudeTokenHistory = false
     @State private var claudeTokenHistoryError: String?
+    @State private var diagnosticExportError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,6 +86,8 @@ struct SettingsView: View {
 
                 launchSection
                 privacyCallout
+                diagnosticExport
+                supportLinks
                 footer
             }
             .padding(.top, 26)
@@ -203,7 +209,24 @@ struct SettingsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                if needsClaudeTokenAccess(provider) {
+                if !presentation.isConnected {
+                    HStack(spacing: 5) {
+                        if presentation.isBusy {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(SettingsPalette.accent)
+                        } else {
+                            Text(language.text("Connect", "Conectar"))
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 8.5, weight: .bold))
+                        }
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(SettingsPalette.accent)
+                    .padding(.top, 4)
+                }
+
+                if presentation.isConnected && needsClaudeTokenAccess(provider) {
                     if isAddingClaudeTokenHistory {
                         ProgressView()
                             .controlSize(.small)
@@ -241,7 +264,25 @@ struct SettingsView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture {
+            guard !presentation.isConnected, !presentation.isBusy else { return }
+            beginProviderSignIn(provider)
+        }
+        .accessibilityAction(named: language.text(
+            "Connect \(provider.displayName)",
+            "Conectar \(provider.displayName)"
+        )) {
+            guard !presentation.isConnected, !presentation.isBusy else { return }
+            beginProviderSignIn(provider)
+        }
         .accessibilityElement(children: .contain)
+    }
+
+    private func beginProviderSignIn(_ provider: UsageProviderID) {
+        Task { @MainActor in
+            _ = await store.connect(provider)
+        }
     }
 
     private func needsClaudeTokenAccess(_ provider: UsageProviderID) -> Bool {
@@ -325,6 +366,56 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 3)
+    }
+
+    private var diagnosticExport: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SettingsLinkButton(title: language.text(
+                "Export diagnostics…",
+                "Exportar diagnóstico…"
+            )) {
+                exportDiagnostics()
+            }
+            if let diagnosticExportError {
+                Text(diagnosticExportError)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(UsageTheme.red)
+            }
+        }
+    }
+
+    private func exportDiagnostics() {
+        diagnosticExportError = nil
+        do {
+            let data = try store.diagnosticReportData()
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.json]
+            panel.canCreateDirectories = true
+            panel.nameFieldStringValue = "AI-Usage-Diagnostics.json"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try data.write(to: url, options: .atomic)
+        } catch {
+            diagnosticExportError = error.localizedDescription
+        }
+    }
+
+    private var supportLinks: some View {
+        HStack(spacing: 16) {
+            SettingsLinkButton(title: language.text("Help", "Ayuda")) {
+                openSupportURL("https://github.com/carlosrebato/ai-usage-mac#readme")
+            }
+            SettingsLinkButton(title: language.text("Privacy", "Privacidad")) {
+                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/blob/main/PRIVACY.md")
+            }
+            SettingsLinkButton(title: language.text("Report an issue", "Informar de un problema")) {
+                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/issues/new/choose")
+            }
+        }
+    }
+
+    private func openSupportURL(_ value: String) {
+        guard let url = URL(string: value) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private var footer: some View {
@@ -473,42 +564,55 @@ struct SettingsView: View {
 
         switch status?.phase {
         case .connected:
+            let isCached = snapshot?.source == .cached
+                || status?.dataState == .cached
+                || status?.dataState == .stale
             return ProviderPresentation(
                 detail: snapshot?.message ?? status?.message ?? language.text(
                     "Local session detected",
                     "Sesión local detectada"
                 ),
-                badge: language.text("Connected", "Conectado"),
-                color: SettingsPalette.accent,
-                isConnected: true
+                badge: isCached
+                    ? language.text("Cached", "En caché")
+                    : language.text("Connected", "Conectado"),
+                color: isCached ? UsageTheme.cached : SettingsPalette.accent,
+                isConnected: true,
+                isBusy: false
             )
         case .checking:
             return ProviderPresentation(
-                detail: language.text("Checking the local session…", "Comprobando la sesión local…"),
+                detail: status?.message ?? language.text(
+                    "Checking the connection…",
+                    "Comprobando la conexión…"
+                ),
                 badge: language.text("Checking", "Comprobando"),
                 color: UsageTheme.amber,
-                isConnected: false
+                isConnected: false,
+                isBusy: true
             )
         case .actionRequired:
             return ProviderPresentation(
                 detail: status?.message ?? language.text("Setup required", "Necesita configuración"),
                 badge: language.text("Attention", "Atención"),
                 color: UsageTheme.amber,
-                isConnected: false
+                isConnected: false,
+                isBusy: false
             )
         case .retrying:
             return ProviderPresentation(
                 detail: status?.message ?? language.text("Could not connect", "No se pudo conectar"),
                 badge: language.text("Retrying", "Reintentando"),
                 color: UsageTheme.red,
-                isConnected: false
+                isConnected: false,
+                isBusy: false
             )
         case .none:
             return ProviderPresentation(
                 detail: snapshot?.message ?? language.text("No data", "Sin datos"),
                 badge: language.text("Not connected", "Sin conectar"),
                 color: SettingsPalette.faint,
-                isConnected: false
+                isConnected: false,
+                isBusy: false
             )
         }
     }
@@ -516,12 +620,9 @@ struct SettingsView: View {
     private func providerMeta(_ presentation: ProviderPresentation) -> String {
         let detail = presentation.detail.trimmingCharacters(in: .whitespacesAndNewlines)
         if presentation.isConnected {
-            let plan = detail.hasPrefix("Plan ") ? String(detail.dropFirst(5)) : detail
-            let planLabel = plan.localizedCaseInsensitiveContains("plan")
-                || plan == language.text("Connected locally", "Conectado localmente")
-                ? plan
-                : "\(plan) Plan"
-            return "\(planLabel) · \(presentation.badge)"
+            guard detail.hasPrefix("Plan ") else { return presentation.badge }
+            let plan = String(detail.dropFirst(5))
+            return "\(plan) · \(presentation.badge)"
         }
         return detail
     }
@@ -553,8 +654,8 @@ enum SettingsPalette {
     static let buttonText = Color(red: 216 / 255, green: 216 / 255, blue: 220 / 255)
     static let icon = Color(red: 194 / 255, green: 196 / 255, blue: 202 / 255)
     static let glyph = Color(red: 232 / 255, green: 232 / 255, blue: 234 / 255)
-    static let secondary = Color(red: 124 / 255, green: 126 / 255, blue: 134 / 255)
-    static let faint = Color(red: 93 / 255, green: 95 / 255, blue: 102 / 255)
+    static let secondary = Color(red: 144 / 255, green: 146 / 255, blue: 154 / 255)
+    static let faint = Color(red: 134 / 255, green: 136 / 255, blue: 144 / 255)
     static let accent = Color(red: 62 / 255, green: 207 / 255, blue: 142 / 255)
 
     static let backgroundGradient = RadialGradient(

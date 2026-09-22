@@ -2,12 +2,11 @@ import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
 import AppKit
+import Combine
 import SwiftUI
 
 struct MenuBarView: View {
-    private enum Layout {
-        static let width: CGFloat = 392
-    }
+    static let preferredWidth: CGFloat = 448
 
     @EnvironmentObject private var store: UsageStore
     @EnvironmentObject private var providerSelection: ProviderSelectionStore
@@ -17,7 +16,7 @@ struct MenuBarView: View {
     @AppStorage(AppPreferenceKey.automaticRefresh) private var automaticRefresh = true
     @AppStorage(AppPreferenceKey.showResetTimesInMenuBar) private var showResetTimes = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
-    @State private var isExpanded = false
+    @AppStorage(AppPreferenceKey.menuBarExpanded) private var isExpanded = false
     @State private var now = Date.now
 
     private let detachAction: (() -> Void)?
@@ -64,8 +63,8 @@ struct MenuBarView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)
         }
-        .frame(width: Layout.width)
-        .fixedSize(horizontal: true, vertical: true)
+        .frame(width: Self.preferredWidth)
+        .fixedSize(horizontal: false, vertical: true)
         .id(isExpanded ? "expanded" : "compact")
         .background(UsageTheme.panelGradient)
         .animation(nil, value: isExpanded)

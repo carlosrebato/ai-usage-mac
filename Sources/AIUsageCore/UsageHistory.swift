@@ -65,6 +65,27 @@ public struct UsageHistory: Equatable, Codable, Sendable {
         }
     }
 
+    /// Keeps prior history intact while preventing a disconnected provider's
+    /// saved/local value from looking like a live measurement for today.
+    public func lastSevenDays(
+        relativeTo now: Date,
+        currentDayProviders: Set<UsageProviderID>,
+        calendar: Calendar = .current
+    ) -> [UsageHistoryDay] {
+        var result = lastSevenDays(relativeTo: now, calendar: calendar)
+        guard !result.isEmpty else { return result }
+        let today = result.index(before: result.endIndex)
+        if !currentDayProviders.contains(.claude) {
+            result[today].claudePercent = nil
+            result[today].claudeTokens = nil
+        }
+        if !currentDayProviders.contains(.codex) {
+            result[today].codexPercent = nil
+            result[today].codexTokens = nil
+        }
+        return result
+    }
+
     public func currentStreak(relativeTo now: Date, calendar: Calendar = .current) -> Int {
         let indexed = Dictionary(uniqueKeysWithValues: days.map {
             (calendar.startOfDay(for: $0.date), $0.hasUsage)

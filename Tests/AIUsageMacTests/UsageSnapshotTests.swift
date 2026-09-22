@@ -83,6 +83,8 @@ struct UsageSnapshotTests {
 
         #expect(!snapshot.isStale(at: observedAt.addingTimeInterval(599)))
         #expect(snapshot.isStale(at: observedAt.addingTimeInterval(601)))
+        #expect(!snapshot.isStale(at: observedAt.addingTimeInterval(-60)))
+        #expect(snapshot.isStale(at: observedAt.addingTimeInterval(-61)))
     }
 
     @Test func codexUsesWeeklyWindowAsPrimaryDisplayWhenSessionIsUnavailable() {

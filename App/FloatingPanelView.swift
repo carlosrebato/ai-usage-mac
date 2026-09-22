@@ -2,6 +2,7 @@ import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
 import AppKit
+import Combine
 import SwiftUI
 
 struct FloatingPanelView: View {

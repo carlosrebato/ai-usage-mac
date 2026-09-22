@@ -1,18 +1,18 @@
 import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
+import AIUsageProviderServices
 import AppKit
 import SwiftUI
 
 struct ConnectionSetupView: View {
+    @EnvironmentObject private var store: UsageStore
     let statuses: [ProviderConnectionStatus]
     let isRefreshing: Bool
     let errorMessage: String?
     let retry: () -> Void
     let grantClaudeDesktopAccess: () -> Void
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
-    @State private var isSigningInToClaude = false
-    @State private var signInError: String?
 
     private var pending: [ProviderConnectionStatus] {
         statuses.filter { status in
@@ -32,8 +32,8 @@ struct ConnectionSetupView: View {
                         .tracking(1.4)
                         .foregroundStyle(UsageTheme.tertiaryText)
                     Text(language.text(
-                        "AI Usage will use the sessions already available on this Mac.",
-                        "AI Usage utilizará las sesiones que ya tienes en este Mac."
+                        "Connect AI Usage to refresh your limits. Your other apps stay signed in.",
+                        "Conecta AI Usage para actualizar tus límites. Las demás apps mantienen su sesión."
                     ))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(UsageTheme.secondaryText)
@@ -43,7 +43,7 @@ struct ConnectionSetupView: View {
                     connectionRow(status)
                 }
 
-                if let visibleError = signInError ?? errorMessage {
+                if let visibleError = errorMessage {
                     Text(visibleError)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(UsageTheme.red)
@@ -92,9 +92,7 @@ struct ConnectionSetupView: View {
         switch action {
         case .grantPermission: language.text("Grant access", "Dar acceso")
         case .signIn:
-            provider == .claude
-                ? language.text("Sign in with Claude", "Iniciar sesión con Claude")
-                : language.text("Open Codex", "Abrir Codex")
+            language.text("Connect \(provider.displayName)", "Conectar \(provider.displayName)")
         case .install: language.text("Install", "Instalar")
         case .retry: language.text("Retry", "Reintentar")
         }
@@ -107,21 +105,8 @@ struct ConnectionSetupView: View {
         case .grantPermission, .retry:
             retry()
         case .signIn:
-            if provider == .claude {
-                guard !isSigningInToClaude else { return }
-                isSigningInToClaude = true
-                signInError = nil
-                Task { @MainActor in
-                    defer { isSigningInToClaude = false }
-                    do {
-                        try await ClaudeBrowserLogin.signIn()
-                        retry()
-                    } catch {
-                        signInError = error.localizedDescription
-                    }
-                }
-            } else {
-                ProviderAppLauncher.open(provider, installationFallback: false)
+            Task { @MainActor in
+                _ = await store.connect(provider)
             }
         case .install:
             ProviderAppLauncher.open(provider, installationFallback: true)

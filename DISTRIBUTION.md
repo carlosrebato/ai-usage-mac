@@ -116,8 +116,14 @@ after that can update automatically.
 
 ## Automating signed releases
 
-After a manual release works end to end, add a workflow protected by a GitHub
-environment. It must create a temporary Keychain, import the certificate and
-profiles, sign the app and widget, submit with `notarytool`, and delete the
-temporary Keychain. Signing credentials must never be exposed to pull-request
-workflows.
+Signed releases currently run manually on the maintainer's Mac. The Developer
+ID private key, Apple notarization credential and Sparkle private key stay in
+the local Keychain and are not copied to GitHub.
+
+The repository has an empty GitHub environment named `release`. It is limited
+to protected branches, requires approval from `carlosrebato`, and does not
+allow administrator bypass. If signed releases are automated later, the
+workflow must use this environment, create a temporary Keychain, import the
+certificate and profiles, sign the app and widget, submit with `notarytool`,
+and delete the temporary Keychain. Signing credentials must never be exposed
+to pull-request workflows.

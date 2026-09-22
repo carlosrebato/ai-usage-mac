@@ -1,12 +1,14 @@
 import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
+import AIUsageProviderServices
 import SwiftUI
 
 struct OnboardingView: View {
     private enum ProviderIndicator: Equatable {
         case none
         case connected
+        case cached
         case attention
         case error
         case information
@@ -294,7 +296,7 @@ struct OnboardingView: View {
 
     private func managementProviderCard(_ provider: UsageProviderID) -> some View {
         let state = cardState(for: provider)
-        let connected = state.indicator == .connected
+        let connected = state.indicator == .connected || state.indicator == .cached
         let needsClaudeTokenAccess = provider == .claude
             && ProviderDataAccess.shared.hasStoredAccess(for: .claude)
             && !ProviderDataAccess.shared.hasUsableAccess(for: .claudeCode)
@@ -387,6 +389,11 @@ struct OnboardingView: View {
                 .fill(SettingsPalette.accent)
                 .frame(width: 7, height: 7)
                 .shadow(color: SettingsPalette.accent.opacity(0.55), radius: 5)
+        case .cached:
+            Circle()
+                .fill(UsageTheme.cached)
+                .frame(width: 7, height: 7)
+                .shadow(color: UsageTheme.cached.opacity(0.55), radius: 5)
         case .attention:
             Circle()
                 .fill(UsageTheme.amber)
@@ -511,6 +518,8 @@ struct OnboardingView: View {
             EmptyView()
         case .connected:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(connectedColor)
+        case .cached:
+            Image(systemName: "clock.fill").foregroundStyle(UsageTheme.cached)
         case .attention:
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(attentionColor)
         case .error:
@@ -523,18 +532,11 @@ struct OnboardingView: View {
     private func cardState(for provider: UsageProviderID) -> CardState {
         if busyProvider == provider {
             return CardState(
-                title: provider == .claude
-                    ? language.text("Connecting…", "Conectando…")
-                    : language.text("Checking…", "Comprobando…"),
-                subtitle: provider == .claude
-                    ? language.text(
-                        "Checking the authorized Claude data folder.",
-                        "Comprobando la carpeta de datos autorizada de Claude."
-                    )
-                    : language.text(
-                        "Checking the authorized .codex folder.",
-                        "Comprobando la carpeta .codex autorizada."
-                    ),
+                title: language.text("Checking…", "Comprobando…"),
+                subtitle: language.text(
+                    "Verifying the authorized connection and usage data.",
+                    "Verificando la conexión autorizada y los datos de uso."
+                ),
                 indicator: .busy,
                 actionTitle: nil,
                 actionIsQuiet: false
@@ -547,16 +549,40 @@ struct OnboardingView: View {
 
         switch status.phase {
         case .connected:
-            let message = store.snapshots.first(where: { $0.id == provider })?.message
+            let snapshot = store.snapshots.first(where: { $0.id == provider })
+            let message = snapshot?.message
+            let isCached = snapshot?.source == .cached
+                || status.dataState == .cached
+                || status.dataState == .stale
+            let usesLocalSession = isLocalFallback(provider, message: message)
+            let subtitle = message ?? language.text(
+                "Local session detected",
+                "Sesión local detectada"
+            )
             return CardState(
-                title: "\(provider == .claude ? "Claude" : "Codex") \(language.text("connected", "conectado"))",
-                subtitle: message ?? language.text("Local session detected", "Sesión local detectada"),
-                indicator: .connected,
-                actionTitle: language.text("Change access", "Cambiar acceso"),
+                title: usesLocalSession
+                    ? language.text(
+                        "Using the local \(provider.displayName) session",
+                        "Usando la sesión local de \(provider.displayName)"
+                    )
+                    : "\(provider == .claude ? "Claude" : "Codex") \(language.text("connected", "conectado"))",
+                subtitle: isCached
+                    ? "\(subtitle) · \(language.text("Cached", "En caché"))"
+                    : subtitle,
+                indicator: isCached ? .cached : .connected,
+                actionTitle: usesLocalSession
+                    ? language.text("Connect directly", "Conectar directamente")
+                    : language.text("Reconnect", "Reconectar"),
                 actionIsQuiet: true
             )
         case .checking:
-            return initialState(for: provider)
+            return CardState(
+                title: language.text("Connecting…", "Conectando…"),
+                subtitle: status.message,
+                indicator: .busy,
+                actionTitle: nil,
+                actionIsQuiet: false
+            )
         case .retrying:
             return CardState(
                 title: language.text("Could not connect", "No se pudo conectar"),
@@ -589,12 +615,13 @@ struct OnboardingView: View {
             )
         case .signIn:
             return CardState(
-                title: language.text("Sign in to continue", "Inicia sesión para continuar"),
+                title: language.text("Connect AI Usage", "Conecta AI Usage"),
                 subtitle: message,
                 indicator: .attention,
-                actionTitle: provider == .claude
-                    ? language.text("Sign in with Claude", "Iniciar sesión con Claude")
-                    : language.text("Open Codex", "Abrir Codex"),
+                actionTitle: language.text(
+                    "Connect \(provider == .claude ? "Claude" : "Codex")",
+                    "Conectar \(provider == .claude ? "Claude" : "Codex")"
+                ),
                 actionIsQuiet: false
             )
         case .install:
@@ -625,8 +652,8 @@ struct OnboardingView: View {
                     "Inicia sesión de forma segura en el navegador. AI Usage nunca ve tu contraseña."
                 )
                 : language.text(
-                    "Choose .codex once to read your local session and counters.",
-                    "Elige .codex una vez para leer tu sesión y contadores locales."
+                    "Sign in securely in your browser. Your Codex session stays separate.",
+                    "Inicia sesión de forma segura en el navegador. Tu sesión de Codex queda separada."
                 ),
             indicator: .none,
             actionTitle: language.text("Connect", "Conectar"),
@@ -638,17 +665,17 @@ struct OnboardingView: View {
         accessError = nil
         let status = store.connectionStatuses.first { $0.id == provider }
 
-        if provider == .claude,
-           status == nil || status?.phase == .checking {
-            beginClaudeSignIn()
+        if status == nil || status?.phase == .checking {
+            beginProviderSignIn(provider)
             return
         }
 
-        if status?.phase == .connected || status?.action == .grantPermission {
-            Task { await connect(provider) }
+        if status?.phase == .connected {
+            beginProviderSignIn(provider)
             return
         }
-        if status?.phase == .checking {
+
+        if status?.action == .grantPermission {
             Task { await connect(provider) }
             return
         }
@@ -656,11 +683,7 @@ struct OnboardingView: View {
         if let action = status?.action {
             switch action {
             case .signIn:
-                if provider == .claude {
-                    beginClaudeSignIn()
-                } else {
-                    ProviderAppLauncher.open(provider, installationFallback: false)
-                }
+                beginProviderSignIn(provider)
                 return
             case .install:
                 ProviderAppLauncher.open(provider, installationFallback: true)
@@ -673,18 +696,11 @@ struct OnboardingView: View {
         Task { await refresh(provider) }
     }
 
-    private func beginClaudeSignIn() {
-        guard busyProvider == nil else { return }
-        busyProvider = .claude
+    private func beginProviderSignIn(_ provider: UsageProviderID) {
         accessError = nil
         Task { @MainActor in
-            defer { busyProvider = nil }
-            do {
-                try await ClaudeBrowserLogin.signIn()
-                setProviderVisible(true, provider: .claude)
-                await store.refreshWhenIdle(force: true, allowInteraction: false)
-            } catch {
-                accessError = error.localizedDescription
+            if await store.connect(provider) {
+                setProviderVisible(true, provider: provider)
             }
         }
     }
@@ -713,6 +729,16 @@ struct OnboardingView: View {
 
     private func dataDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {
         provider == .claude ? .claude : .codex
+    }
+
+    private func isLocalFallback(_ provider: UsageProviderID, message: String?) -> Bool {
+        guard let message else { return false }
+        switch provider {
+        case .claude:
+            return message.localizedCaseInsensitiveContains("statusline")
+        case .codex:
+            return message.localizedCaseInsensitiveContains("app-server")
+        }
     }
 
     private func refresh(_ provider: UsageProviderID) async {
@@ -796,7 +822,11 @@ private struct ManagementGhostButton: View {
     @State private var isHovering = false
 
     var body: some View {
-        Button(title, action: action)
+        Button(action: action) {
+            Text(title)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
             .buttonStyle(.plain)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(SettingsPalette.buttonText)

@@ -2,15 +2,27 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
-## 0.1.2-beta.1 — 2026-08-21
+## 0.1.3-beta.1 — 2026-09-22
 
-- Preserve the seven-day usage chart and streak while refining Settings and
-  the detached compact panel.
-- Show each connected assistant's actual plan, including Claude Max 5x/20x,
-  by reading the authenticated Claude profile when local metadata is absent.
-- Simplify Settings by removing the redundant assistant-count badge.
-- Replace the detached panel's bottom Attach button with a minimal corner
-  control and remove the stray square border around the panel.
+- Centralize Claude and Codex connection flows so every screen presents the
+  same atomic provider state.
+- Prevent reconnection cancellation and delayed OAuth propagation from leaving
+  stale errors, false connected states or crashes.
+- Stop disconnected providers from contributing local metrics or a synthetic
+  current-day chart point.
+- Preserve the newest metrics candidate when refreshes overlap.
+- Restore concrete Claude and Codex plan names and accept Claude reset times
+  with fractional seconds or numeric Unix timestamps.
+- Keep providers visibly connected during a temporary rate limit when a saved
+  reading is available, preserving plan names, counters and reset timers.
+- Distinguish saved or stale readings in orange across the menu bar, dashboard,
+  Settings, assistant management, detached panel, widget and iOS app; yellow is
+  now reserved for elevated quota consumption.
+- Add privacy-safe diagnostic export, release-readiness checks and three-launch
+  signed smoke tests.
+- Raise muted text contrast to WCAG AA and add Help, Privacy and issue links.
+- Verify a 90-day incremental index against a clean rebuild over 1.47 GB of
+  local JSONL history.
 
 ## 0.1.1-beta.4 — 2026-08-18
 

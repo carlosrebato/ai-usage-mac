@@ -54,6 +54,7 @@ enum AppPreferenceKey {
     static let automaticRefresh = "automaticRefresh"
     static let showPercentageInMenuBar = "showPercentageInMenuBar"
     static let showResetTimesInMenuBar = "showResetTimesInMenuBar"
+    static let menuBarExpanded = "menuBarExpanded"
     static let onboardingCompleted = "onboardingCompleted"
     static let language = AppLanguage.preferenceKey
 }

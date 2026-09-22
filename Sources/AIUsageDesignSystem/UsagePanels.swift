@@ -129,7 +129,11 @@ public struct UsageDetailedMetrics: View {
                 history: history,
                 now: now,
                 language: language,
-                providers: Set(ordered.map(\.id))
+                providers: Set(ordered.map(\.id)),
+                currentDayProviders: Set(
+                    ordered.filter { $0.source != .unavailable && $0.highestPercent != nil }
+                        .map(\.id)
+                )
             )
         }
     }
@@ -150,7 +154,11 @@ public struct UsageDetailedMetrics: View {
                     .font(.system(size: 16.5, weight: .semibold))
                     .foregroundStyle(UsageTheme.primaryText)
                 Spacer()
-                UsageStatusDot(severity: UsageSeverity.forPercent(primary.usedPercent), size: 8)
+                UsageStatusDot(
+                    severity: UsageSeverity.forPercent(primary.usedPercent),
+                    color: snapshot.source == .cached ? UsageTheme.cached : nil,
+                    size: 8
+                )
             }
 
             HStack(alignment: .bottom, spacing: 16) {
@@ -220,10 +228,19 @@ public struct UsageDetailedMetrics: View {
                 }
                 Spacer()
                 if snapshot.source == .cached {
-                    Text(language.text("CACHED", "CACHÉ"))
+                    Label {
+                        Text(snapshot.observedAt.formatted(date: .omitted, time: .shortened))
+                    } icon: {
+                        Image(systemName: "clock.fill")
+                    }
                         .font(.system(size: 9, weight: .semibold))
                         .tracking(1.1)
-                        .foregroundStyle(UsageTheme.amber)
+                        .foregroundStyle(UsageTheme.cached)
+                        .accessibilityLabel(language.text(
+                            "Last saved value from \(snapshot.observedAt.formatted(date: .omitted, time: .shortened))",
+                            "Último dato guardado de las \(snapshot.observedAt.formatted(date: .omitted, time: .shortened))"
+                        ))
+                        .fixedSize(horizontal: true, vertical: false)
                 } else if snapshot.source == .unavailable {
                     Text(language.text("OFFLINE", "SIN CONEXIÓN"))
                         .font(.system(size: 9, weight: .semibold))
@@ -246,6 +263,7 @@ public struct UsageDetailedMetrics: View {
                 .foregroundStyle(UsageTheme.metaText)
         }
         .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
 }
@@ -255,17 +273,20 @@ public struct UsageTrendFooter: View {
     public let now: Date
     public let language: AppLanguage
     public let providers: Set<UsageProviderID>
+    public let currentDayProviders: Set<UsageProviderID>
 
     public init(
         history: UsageHistory,
         now: Date,
         language: AppLanguage = .english,
-        providers: Set<UsageProviderID> = Set(UsageProviderID.allCases)
+        providers: Set<UsageProviderID> = Set(UsageProviderID.allCases),
+        currentDayProviders: Set<UsageProviderID> = Set(UsageProviderID.allCases)
     ) {
         self.history = history
         self.now = now
         self.language = language
         self.providers = providers
+        self.currentDayProviders = currentDayProviders
     }
 
     public var body: some View {
@@ -287,7 +308,10 @@ public struct UsageTrendFooter: View {
             }
 
             UsageTrendChart(
-                days: history.lastSevenDays(relativeTo: now),
+                days: history.lastSevenDays(
+                    relativeTo: now,
+                    currentDayProviders: currentDayProviders
+                ),
                 language: language,
                 providers: providers
             )
@@ -656,6 +680,15 @@ public struct UsageFloatingMetrics: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(UsageTheme.secondaryText)
                         Spacer()
+                        if snapshot.source == .cached {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(UsageTheme.cached)
+                                .accessibilityLabel(language.text(
+                                    "Cached data",
+                                    "Datos en caché"
+                                ))
+                        }
                         Text(percent(primary.usedPercent))
                             .font(.system(size: 14, weight: .bold))
                             .monospacedDigit()
@@ -711,21 +744,24 @@ public struct UsageMeter: View {
 
 public struct UsageStatusDot: View {
     public let severity: UsageSeverity
+    public let color: Color?
     public let size: CGFloat
 
-    public init(severity: UsageSeverity, size: CGFloat = 7) {
+    public init(severity: UsageSeverity, color: Color? = nil, size: CGFloat = 7) {
         self.severity = severity
+        self.color = color
         self.size = size
     }
 
     public var body: some View {
         TimelineView(.animation(minimumInterval: severity == .critical ? 0.05 : 1, paused: severity != .critical)) { timeline in
             let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * .pi * 2) + 1) / 2
+            let resolvedColor = color ?? UsageTheme.severity(severity)
             Circle()
-                .fill(UsageTheme.severity(severity))
+                .fill(resolvedColor)
                 .frame(width: size, height: size)
                 .opacity(severity == .critical ? 0.45 + pulse * 0.55 : 1)
-                .shadow(color: UsageTheme.severity(severity).opacity(0.65), radius: severity == .critical ? pulse * 6 : 4)
+                .shadow(color: resolvedColor.opacity(0.65), radius: severity == .critical ? pulse * 6 : 4)
         }
     }
 }

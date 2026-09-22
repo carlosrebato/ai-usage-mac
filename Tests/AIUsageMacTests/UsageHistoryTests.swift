@@ -36,6 +36,15 @@ struct UsageHistoryTests {
         #expect(history.currentStreak(relativeTo: secondDay, calendar: calendar) == 2)
         #expect(history.lastSevenDays(relativeTo: secondDay, calendar: calendar).count == 7)
 
+        let visibleHistory = history.lastSevenDays(
+            relativeTo: secondDay,
+            currentDayProviders: [.codex],
+            calendar: calendar
+        )
+        #expect(visibleHistory.last?.claudePercent == nil)
+        #expect(visibleHistory.last?.claudeTokens == nil)
+        #expect(visibleHistory.last?.codexPercent == 20)
+
         let activityHistory = try cache.applyingActivityDates(
             [firstDay],
             periodStart: firstDay,

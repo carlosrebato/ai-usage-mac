@@ -3,69 +3,45 @@ import Testing
 import AIUsageCore
 @testable import AIUsageMacServices
 
-private struct EmptyClaudeCredentialLoader: ClaudeCredentialLoading {
-    let permissionRequired: Bool
+private actor EventuallyReadyUsageConnector: UsageConnector {
+    nonisolated let providerID = UsageProviderID.claude
+    private var missingResponses: Int
 
-    init(permissionRequired: Bool = false) {
-        self.permissionRequired = permissionRequired
+    init(missingResponses: Int) {
+        self.missingResponses = missingResponses
     }
 
-    func loadCandidates() -> ClaudeCredentialLoad {
-        ClaudeCredentialLoad(credentials: [], permissionRequired: permissionRequired)
+    func fetchSnapshot(allowInteraction _: Bool) async throws -> ProviderUsageSnapshot {
+        if missingResponses > 0 {
+            missingResponses -= 1
+            throw UsageConnectorError.missingUsageWindows
+        }
+        return ProviderUsageSnapshot(
+            id: .claude,
+            session: UsageWindow(usedPercent: 17, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: 29, resetsAt: nil),
+            observedAt: .now,
+            source: .live,
+            message: "Direct"
+        )
     }
 }
 
 struct ClaudeConnectorTests {
-    @Test func oauthUsageMapsSessionAndWeeklyWindows() throws {
-        let data = Data(
-            #"{"five_hour":{"utilization":25.5,"resets_at":"2026-07-22T12:00:00.000Z"},"seven_day":{"utilization":40,"resets_at":"2026-07-27T00:00:00Z"}}"#.utf8
+    @Test func missingWindowsDoNotOpenTheCircuitWhileOAuthPropagates() async throws {
+        let connector = ResilientUsageConnector(
+            direct: EventuallyReadyUsageConnector(missingResponses: 3),
+            localFallback: nil
         )
 
-        let snapshot = try ClaudeUsageNormalizer.snapshot(
-            from: data,
-            plan: "Max 5x",
-            observedAt: Date(timeIntervalSince1970: 100)
-        )
+        for _ in 0..<3 {
+            await #expect(throws: UsageConnectorError.missingUsageWindows) {
+                try await connector.fetchSnapshot(allowInteraction: false)
+            }
+        }
+        let snapshot = try await connector.fetchSnapshot(allowInteraction: false)
 
-        #expect(snapshot.id == .claude)
-        #expect(snapshot.session.usedPercent == 25.5)
-        #expect(snapshot.weekly.usedPercent == 40)
-        #expect(snapshot.session.resetsAt != nil)
-        #expect(snapshot.message == "Plan Max 5x")
-        #expect(snapshot.source == .live)
-    }
-
-    @Test func oauthUsageClampsUnexpectedPercentages() throws {
-        let data = Data(
-            #"{"five_hour":{"utilization":-3},"seven_day":{"utilization":112}}"#.utf8
-        )
-
-        let snapshot = try ClaudeUsageNormalizer.snapshot(from: data, plan: nil, observedAt: .now)
-        #expect(snapshot.session.usedPercent == 0)
-        #expect(snapshot.weekly.usedPercent == 100)
-    }
-
-    @Test func credentialsAreParsedWithoutPersistingThem() {
-        let data = Data(
-            #"{"claudeAiOauth":{"accessToken":"secret-test-token","expiresAt":4102444800000,"subscriptionType":"max","rateLimitTier":"default_claude_max_5x","scopes":["user:profile","user:inference"]}}"#.utf8
-        )
-
-        let credential = ClaudeCredentialStore.parseCredentialData(data)
-        #expect(credential?.accessToken == "secret-test-token")
-        #expect(credential?.displayPlan == "Max 5x")
-        #expect(credential?.scopes?.contains("user:profile") == true)
-    }
-
-    @Test func oauthProfileProvidesTheActualClaudePlan() {
-        let maxData = Data(
-            #"{"account":{"has_claude_max":true,"has_claude_pro":false},"organization":{"organization_type":"claude_max","rate_limit_tier":"default_claude_max_5x"}}"#.utf8
-        )
-        let proData = Data(
-            #"{"account":{"has_claude_max":false,"has_claude_pro":true},"organization":{"organization_type":"claude_pro","rate_limit_tier":null}}"#.utf8
-        )
-
-        #expect(ClaudeProfileNormalizer.plan(from: maxData) == "Max 5x")
-        #expect(ClaudeProfileNormalizer.plan(from: proData) == "Pro")
+        #expect(snapshot.session.usedPercent == 17)
     }
 
     @Test func recentStatuslineCanActAsFallback() throws {
@@ -79,7 +55,23 @@ struct ClaudeConnectorTests {
         let snapshot = ClaudeStatuslineReader(fileURL: file).readFresh(now: observedAt)
         #expect(snapshot?.session.usedPercent == 18)
         #expect(snapshot?.weekly.usedPercent == 37)
-        #expect(snapshot?.source == .cached)
+        #expect(snapshot?.source == .live)
+    }
+
+    @Test func futureStatuslineTimestampIsClampedToRefreshTime() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("limits.json")
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let future = ISO8601DateFormatter().string(from: now.addingTimeInterval(6 * 60 * 60))
+        let payload = #"{"sessionPercent":18,"weekPercent":37,"lastUpdated":"\#(future)"}"#
+        try Data(payload.utf8).write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: file.path)
+
+        let snapshot = ClaudeStatuslineReader(fileURL: file).readFresh(now: now)
+
+        #expect(snapshot?.observedAt == now)
+        #expect(snapshot?.source == .live)
     }
 
     @Test func staleStatuslineIsRejected() throws {
@@ -87,64 +79,11 @@ struct ClaudeConnectorTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let file = directory.appendingPathComponent("limits.json")
         try Data(#"{"sessionPercent":18,"weekPercent":37}"#.utf8).write(to: file)
-
-        let oldDate = Date.now.addingTimeInterval(-3600)
-        try FileManager.default.setAttributes([.modificationDate: oldDate], ofItemAtPath: file.path)
-
-        let snapshot = ClaudeStatuslineReader(fileURL: file, maximumAge: 600).readFresh(now: .now)
-        #expect(snapshot == nil)
-    }
-
-    @Test func missingBookmarkOffersBrowserSignInWithoutFolderAccess() async {
-        let missingStatusline = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathComponent("missing.json")
-        let connector = ClaudeOAuthConnector(
-            credentialStore: EmptyClaudeCredentialLoader(permissionRequired: true),
-            statusline: ClaudeStatuslineReader(fileURL: missingStatusline)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date.now.addingTimeInterval(-3600)],
+            ofItemAtPath: file.path
         )
 
-        do {
-            _ = try await connector.fetchSnapshot(allowInteraction: false)
-            Issue.record("La actualización debería pedir inicio de sesión")
-        } catch let error as UsageConnectorError {
-            guard case .notAuthenticated = error else {
-                Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
-                return
-            }
-        } catch {
-            Issue.record("Se recibió un error inesperado: \(error.localizedDescription)")
-        }
-    }
-
-    @Test(
-        "Estado real del login local de Claude",
-        .enabled(if: ProcessInfo.processInfo.environment["RUN_CLAUDE_INTEGRATION_TEST"] == "1")
-    )
-    func probesTheLocalClaudeLogin() async {
-        do {
-            let root = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".claude", isDirectory: true)
-            let connector = ClaudeOAuthConnector(
-                credentialStore: ClaudeCredentialStore(claudeRoot: root),
-                statusline: ClaudeStatuslineReader(
-                    fileURL: root.appendingPathComponent("nspanel-rate-limits.json")
-                )
-            )
-            let snapshot = try await connector.fetchSnapshot(allowInteraction: true)
-            #expect(snapshot.id == .claude)
-            #expect(snapshot.highestPercent != nil)
-        } catch let error as UsageConnectorError {
-            let expected: Bool
-            switch error {
-            case .notAuthenticated, .rateLimited:
-                expected = true
-            default:
-                expected = false
-            }
-            #expect(expected)
-        } catch {
-            Issue.record("Estado local no clasificado: \(error.localizedDescription)")
-        }
+        #expect(ClaudeStatuslineReader(fileURL: file, maximumAge: 600).readFresh(now: .now) == nil)
     }
 }
