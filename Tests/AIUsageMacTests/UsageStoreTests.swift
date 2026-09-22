@@ -146,9 +146,9 @@ private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     }
 
     func waitForFirstCall() async -> Bool {
-        for _ in 0..<10_000 {
+        for _ in 0..<500 {
             if weeklyCalls >= 1 { return true }
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
         }
         return false
     }
@@ -159,9 +159,9 @@ private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     }
 
     func waitForWeeklyCalls(_ count: Int) async -> Bool {
-        for _ in 0..<10_000 {
+        for _ in 0..<500 {
             if weeklyCalls >= count { return true }
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
         }
         return false
     }
