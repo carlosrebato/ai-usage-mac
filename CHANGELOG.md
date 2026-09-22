@@ -2,6 +2,15 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.3-beta.2 — 2026-09-22
+
+- Keep local token totals and estimated cost available while a connected
+  provider is temporarily rate limited and displaying saved quota data.
+- Keep the cost and token fields visible when local history is unavailable
+  instead of silently removing them from the dashboard.
+- Offer a clear read-only token-history recovery action for both Claude and
+  Codex when their local folder permission is missing or no longer usable.
+
 ## 0.1.3-beta.1 — 2026-09-22
 
 - Centralize Claude and Codex connection flows so every screen presents the

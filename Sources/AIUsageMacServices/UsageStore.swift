@@ -257,6 +257,13 @@ public final class UsageStore: ObservableObject {
                 let unresolved = fallback
                     ?? Self.unavailable(outcome.providerID, now: .now, message: message)
                 replace(snapshot: unresolved, status: status)
+                // A throttled provider with a saved quota is still connected.
+                // Local token totals do not depend on the provider API, so keep
+                // enriching them instead of making cost/tokens disappear while
+                // the remote endpoint is temporarily rate limited.
+                if status.isConnected {
+                    snapshotsNeedingMetrics.append(unresolved)
+                }
 
                 let backoff = Self.seconds(
                     PollingPolicy.interval(for: .unavailable, consecutiveFailures: failures)

@@ -297,10 +297,11 @@ struct OnboardingView: View {
     private func managementProviderCard(_ provider: UsageProviderID) -> some View {
         let state = cardState(for: provider)
         let connected = state.indicator == .connected || state.indicator == .cached
-        let needsClaudeTokenAccess = provider == .claude
-            && ProviderDataAccess.shared.hasStoredAccess(for: .claude)
-            && !ProviderDataAccess.shared.hasUsableAccess(for: .claudeCode)
-        let actionTitle = needsClaudeTokenAccess
+        let needsTokenHistoryAccess = connected
+            && !ProviderDataAccess.shared.hasUsableAccess(
+                for: metricsDirectory(for: provider)
+            )
+        let actionTitle = needsTokenHistoryAccess
             ? language.text("Add token history", "Añadir histórico de tokens")
             : state.actionTitle
 
@@ -350,8 +351,8 @@ struct OnboardingView: View {
 
                     if let actionTitle {
                         ManagementGhostButton(title: actionTitle) {
-                            if needsClaudeTokenAccess {
-                                Task { await connectClaudeTokenHistory() }
+                            if needsTokenHistoryAccess {
+                                Task { await connectTokenHistory(provider) }
                             } else {
                                 performAction(for: provider)
                             }
@@ -715,16 +716,20 @@ struct OnboardingView: View {
         }
     }
 
-    private func connectClaudeTokenHistory() async {
+    private func connectTokenHistory(_ provider: UsageProviderID) async {
         accessError = nil
-        busyProvider = .claude
+        busyProvider = provider
         defer { busyProvider = nil }
         do {
-            guard try await ClaudeCodeMetricsAccessPicker.requestAccess() else { return }
+            guard try await ProviderDataAccessPicker.requestAccess(for: provider) else { return }
             await store.refreshWhenIdle(force: true, allowInteraction: false)
         } catch {
             accessError = error.localizedDescription
         }
+    }
+
+    private func metricsDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {
+        provider == .claude ? .claudeCode : .codex
     }
 
     private func dataDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {

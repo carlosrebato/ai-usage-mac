@@ -106,6 +106,18 @@ private actor RecordingMetricsReader: LocalUsageMetricsReading {
     }
 }
 
+private struct FixedMetricsReader: LocalUsageMetricsReading {
+    let totals: WeeklyUsageTotals
+
+    func weeklyTotals(
+        for _: UsageProviderID,
+        periodStart _: Date,
+        periodEnd _: Date
+    ) async -> WeeklyUsageTotals? {
+        totals
+    }
+}
+
 private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
     private var weeklyCalls = 0
     private var firstCallContinuation: CheckedContinuation<Void, Never>?
@@ -328,6 +340,17 @@ struct UsageStoreTests {
 
     @Test @MainActor func rateLimitKeepsAConnectedCachedStateAndPlan() async throws {
         let cache = temporaryCache()
+        let localTotals = WeeklyUsageTotals(
+            inputTokens: 1_000,
+            cachedInputTokens: 2_000,
+            cacheWriteTokens: 300,
+            outputTokens: 400,
+            reasoningTokens: 100,
+            equivalentCostUSD: 1.23,
+            hasUnpricedModels: false,
+            periodStart: Date.now.addingTimeInterval(-7 * 24 * 60 * 60),
+            periodEnd: .now
+        )
         let previous = ProviderUsageSnapshot(
             id: .claude,
             session: UsageWindow(
@@ -349,10 +372,14 @@ struct UsageStoreTests {
                 providerID: .claude,
                 error: .rateLimited(retryAfter: 300)
             ),
-            cache: cache
+            cache: cache,
+            metricsReader: FixedMetricsReader(totals: localTotals)
         )
 
         await store.refresh(provider: .claude)
+        for _ in 0..<50 where store.snapshots.first(where: { $0.id == .claude })?.weeklyTotals == nil {
+            await Task.yield()
+        }
 
         let status = store.connectionStatuses.first { $0.id == .claude }
         let snapshot = store.snapshots.first { $0.id == .claude }
@@ -363,6 +390,7 @@ struct UsageStoreTests {
         #expect(snapshot?.message == "Plan Max 5x")
         #expect(snapshot?.session.resetsAt == previous.session.resetsAt)
         #expect(snapshot?.weekly.resetsAt == previous.weekly.resetsAt)
+        #expect(snapshot?.weeklyTotals == localTotals)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
