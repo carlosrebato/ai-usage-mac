@@ -83,7 +83,13 @@ private struct UsageWidgetView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(UsageTheme.secondaryText)
                 Spacer()
-                UsageStatusDot(severity: UsageSeverity.forPercent(snapshot.session.usedPercent))
+                UsageStatusDot(
+                    severity: UsageSeverity.forPercent(snapshot.session.usedPercent),
+                    color: snapshot.source == .cached ? UsageTheme.cached : nil
+                )
+                .accessibilityLabel(snapshot.source == .cached
+                    ? language.text("Cached data", "Datos en caché")
+                    : language.text("Live data", "Datos en directo"))
             }
             Spacer()
             Text(percent(snapshot.session.usedPercent))

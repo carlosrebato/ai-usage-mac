@@ -26,6 +26,14 @@ public enum UsageSource: String, Codable, Sendable {
     case unavailable
 }
 
+public enum ProviderDataState: String, Codable, Equatable, Sendable {
+    case live
+    case cached
+    case stale
+    case reauthRequired
+    case temporarilyUnavailable
+}
+
 public struct UsageFreshness: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
         case live
@@ -165,7 +173,12 @@ public struct ProviderUsageSnapshot: Identifiable, Equatable, Codable, Sendable 
         return UsageSeverity.forPercent(highestPercent)
     }
 
-    public func isStale(at now: Date, after interval: TimeInterval = 10 * 60) -> Bool {
-        now.timeIntervalSince(observedAt) > interval
+    public func isStale(
+        at now: Date,
+        after interval: TimeInterval = 10 * 60,
+        allowedClockSkew: TimeInterval = 60
+    ) -> Bool {
+        let age = now.timeIntervalSince(observedAt)
+        return age > interval || age < -allowedClockSkew
     }
 }

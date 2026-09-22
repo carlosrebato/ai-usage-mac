@@ -13,11 +13,11 @@ enum ProviderDataAccessPicker {
         panel.title = language.text("Connect \(providerName)", "Conectar \(providerName)")
         panel.message = language.text(
             provider == .claude
-                ? "Select your .claude folder. AI Usage will only read your Claude Code credentials and usage counters."
-                : "Select your .codex folder. AI Usage will only read local credentials and usage counters.",
+                ? "Select your .claude folder. AI Usage will only read numeric usage counters for local history and cost estimates."
+                : "Select your .codex folder. AI Usage will only read numeric usage counters for local history and cost estimates.",
             provider == .claude
-                ? "Selecciona tu carpeta .claude. AI Usage solo leerá las credenciales y contadores de Claude Code."
-                : "Selecciona tu carpeta .codex. AI Usage solo leerá credenciales locales y contadores de uso."
+                ? "Selecciona tu carpeta .claude. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
+                : "Selecciona tu carpeta .codex. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
         )
         panel.prompt = language.text("Grant read-only access", "Conceder acceso de solo lectura")
         panel.canChooseFiles = false

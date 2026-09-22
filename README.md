@@ -1,10 +1,10 @@
-# AI Usage for Mac — Claude Code & Codex Usage Tracker
+# AI Usage — Claude Code & Codex Usage Tracker for Mac and iPhone
 
 [![CI](https://github.com/carlosrebato/ai-usage-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosrebato/ai-usage-mac/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/carlosrebato/ai-usage-mac?include_prereleases)](https://github.com/carlosrebato/ai-usage-mac/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-AI Usage is a lightweight, local-first macOS menu bar app for tracking Claude
+AI Usage is an independent, local-first Mac and iPhone app for tracking Claude
 Code and OpenAI Codex usage limits, reset times, tokens and estimated cost. It
 reads local counters in read-only mode and never sends conversation content or
 credentials to the project maintainers.
@@ -19,16 +19,35 @@ logs.
 
 ## Requirements
 
-- macOS 15 or later
-- At least one supported assistant signed in locally:
-  - Claude: sign in securely in the browser from AI Usage. An existing Claude
-    Code session is reused when available; `~/.claude` access is optional and
-    used only for local token history and estimated API-equivalent cost.
-  - Codex, which creates `~/.codex/auth.json`
+- macOS 15 or iOS 18 (the iOS target is currently an App Review viability spike)
+- A Claude or ChatGPT account. Each device signs in independently through the
+  provider; AI Usage never imports a Claude Code, Codex CLI or desktop token.
 
 You can enable Claude, Codex or both. The Claude and Codex desktop apps are not
-required; AI Usage uses the existing local sessions created by their command-line
-tools.
+required for live limits: AI Usage signs in to each provider independently.
+Their command-line tools are optional and are used only when you choose to add
+local token, activity and estimated-cost history on Mac.
+
+### Provider compatibility and pricing
+
+The supported configuration is macOS 15 or later with a current Claude or
+ChatGPT web account. AI Usage does not depend on a particular Claude Code or
+Codex CLI version for authentication or live limits. Optional local-history
+imports are tested against the current stable CLI formats at release time;
+unknown JSON fields are ignored, and an incompatible local format must degrade
+to live limits instead of changing connection state.
+
+Claude and Codex limit endpoints are not documented for third-party clients and
+can change without notice. Every release is smoke-tested against both providers;
+a provider can be disabled independently if compatibility breaks. Supported
+capabilities and the release-blocking checks are documented in
+[OAUTH_CAPABILITIES.md](OAUTH_CAPABILITIES.md).
+
+Cost figures are estimates, never billing data. Model prices are versioned in
+source, reviewed against the providers' public pricing pages before each release,
+and updated in a normal app release when pricing changes. Unknown models remain
+in token totals but do not inherit a guessed price. Users should use Anthropic
+or OpenAI billing records for financial decisions.
 
 ### Requirements for contributors
 
@@ -72,18 +91,19 @@ are never stored in the repository.
 ## How it works
 
 AI Usage opens a native dashboard and adds usage indicators to the menu bar.
-Claude signs in through Anthropic's browser OAuth flow (PKCE with an automatic
-localhost callback) and stores the resulting session in AI Usage's own Keychain
-item. AI Usage never receives the user's password. An existing Claude Code
-credential remains a supported fallback.
-Codex reuses the existing login in `~/.codex/auth.json`. AI Usage then requests
-the current limits directly from the official Anthropic and OpenAI endpoints.
+Claude and Codex sign in through browser OAuth with PKCE, random state and a
+different refresh-token family on every device. Tokens are stored in a
+non-synchronizable `ThisDeviceOnly` Keychain item. AI Usage never receives the
+user's password or reads another app's credential files. It then requests the
+current limits directly from provider endpoints. Those usage endpoints are not
+documented as third-party APIs and may change without notice.
 Authentication is sent only to the corresponding provider, is never sent to the
 project maintainers and is never stored in the app's cache.
 
 - `AIUsageCore`: models, polling policy and shared cache.
 - `AIUsageDesignSystem`: visual tokens and reusable components.
-- `AIUsageMacServices`: local Claude/Codex connectors and app state.
+- `AIUsageProviderServices`: per-device OAuth, Keychain and direct adapters.
+- `AIUsageMacServices`: Mac-only fallbacks, local metrics and app state.
 - `AIUsageMac`: macOS window and menu bar app.
 - `AIUsageWidgets`: WidgetKit extension that reads the latest shared snapshot.
 
@@ -102,13 +122,15 @@ index. On an 818 MB local history, the measured cold import took about two
 minutes; the immediate incremental pass read only 213 KB written while the test
 was running.
 
-Access to `~/.claude` and `~/.codex` is read-only. During setup, macOS asks the
-user to choose each enabled assistant's data folder. AI Usage stores a
-security-scoped bookmark so that permission survives later launches, provided
-the bundle ID and signing identity remain stable. It reads only the local
-authentication and numeric usage data required for the dashboard; it never
-modifies assistant files, reads prompt/response text into its index, or sends
-credentials, conversations or usage history to the project maintainers.
+Optional access to `~/.claude` and `~/.codex` is read-only and is used only for
+local token/activity/cost history on Mac. It is never used for authentication.
+For limit stability, Mac can fall back to Claude's numeric statusline artifact
+or the documented `codex app-server` rate-limit method; neither exposes a token
+to AI Usage. iPhone always updates directly and does not depend on the Mac.
+
+AI Usage is not affiliated with, endorsed by or sponsored by Anthropic or
+OpenAI. See [OAUTH_CAPABILITIES.md](OAUTH_CAPABILITIES.md) for exact scopes and
+[APP_REVIEW.md](APP_REVIEW.md) for the blocking distribution gate.
 
 At launch, each provider is classified as connected, awaiting permission,
 awaiting login, not installed or temporarily unavailable. Setup controls are

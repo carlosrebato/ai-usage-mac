@@ -33,6 +33,21 @@ later unchanged scans did not re-read or re-aggregate the historical database.
 The raw CSV is intentionally generated locally rather than committed because
 it contains timestamps and machine-specific process characteristics.
 
+## Index correctness benchmark
+
+On 22 September 2026, the opt-in index benchmark processed 1,468,263,432 bytes
+across the retained 90-day Claude and Codex history. An immediate incremental
+pass read zero bytes. A second database rebuilt from scratch produced identical
+weekly token/cost totals and identical daily token series for both providers.
+The two complete imports and comparison finished in 213.2 seconds.
+
+Reproduce locally without printing conversation content:
+
+```sh
+RUN_LOCAL_METRICS_BENCHMARK=1 swift test \
+  --filter indexesRealLogsOnceAndMatchesACleanRebuild
+```
+
 ## Reproduce
 
 Build and install a signed Release, find its PID, then run:

@@ -1,6 +1,7 @@
 import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
+import Combine
 import SwiftUI
 
 struct DashboardView: View {
@@ -145,7 +146,7 @@ struct UsageHeaderFreshnessLine: View {
                 Text(statusText(freshness))
                     .foregroundStyle(
                         freshness.kind == .cached
-                            ? UsageTheme.amber.opacity(0.72)
+                            ? UsageTheme.cached.opacity(0.82)
                             : UsageTheme.mutedText
                     )
 
@@ -153,7 +154,7 @@ struct UsageHeaderFreshnessLine: View {
                     .font(.system(size: 7.5, weight: .bold))
                     .foregroundStyle(
                         freshness.kind == .cached
-                            ? UsageTheme.amber.opacity(0.72)
+                            ? UsageTheme.cached.opacity(0.82)
                             : UsageTheme.green.opacity(0.72)
                     )
             }
@@ -164,7 +165,7 @@ struct UsageHeaderFreshnessLine: View {
 
     private func statusText(_ freshness: UsageFreshness) -> String {
         let label = freshness.kind == .cached
-            ? language.text("Cached", "En caché")
+            ? language.text("Last update", "Último dato")
             : language.text("Updated", "Actualizado")
         let time = freshness.date.formatted(date: .omitted, time: .shortened)
         return "\(label) \(time)"

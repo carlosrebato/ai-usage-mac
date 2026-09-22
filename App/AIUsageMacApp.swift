@@ -1,6 +1,7 @@
 import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
+import AIUsageProviderServices
 import AppKit
 import Combine
 import SwiftUI
@@ -86,6 +87,7 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: NativeStatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        try? ProviderOAuthSecurity.purgeLegacyAIUsageTokens()
         statusBarController = NativeStatusBarController(
             store: store,
             assistantSetupContext: assistantSetupContext,
@@ -99,7 +101,7 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
         guard CommandLine.arguments.contains("--verify-oauth-keychain") else { return }
         let result: [String: Any]
         do {
-            try ClaudeAccountOAuth.verifyKeychainAccess()
+            try ProviderOAuthSecurity.verifyDeviceOnlyKeychainAccess()
             result = ["keychainAccess": true]
         } catch {
             result = ["keychainAccess": false, "error": error.localizedDescription]
@@ -132,20 +134,24 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
                     "connection": status.map { Self.smokePhase($0.phase) } ?? "missing",
                     "message": status?.message ?? snapshot?.message ?? "missing",
                     "percent": snapshot?.highestPercent ?? NSNull(),
+                    "sessionResetAt": snapshot?.session.resetsAt?.timeIntervalSince1970 ?? NSNull(),
+                    "weeklyResetAt": snapshot?.weekly.resetsAt?.timeIntervalSince1970 ?? NSNull(),
                     "source": snapshot?.source.rawValue ?? "missing",
                     "observedAt": snapshot?.observedAt.timeIntervalSince1970 ?? 0
                 ]
             }
-            let permissionsPersisted = !enabledProviders.isEmpty && enabledProviders.allSatisfy { provider in
-                if ProviderDataAccess.shared.hasUsableAccess(
-                    for: provider == .claude ? .claude : .codex
-                ) {
-                    return true
+            var persistedCredentials: [UsageProviderID: Bool] = [:]
+            for provider in enabledProviders {
+                do {
+                    persistedCredentials[provider] = try await ProviderAccounts.shared
+                        .account(for: provider)
+                        .credential() != nil
+                } catch {
+                    persistedCredentials[provider] = false
                 }
-                let snapshot = store.snapshots.first { $0.id == provider }
-                let status = store.connectionStatuses.first { $0.id == provider }
-                guard snapshot?.highestPercent != nil else { return false }
-                return status?.phase == .connected || status?.phase == .retrying
+            }
+            let permissionsPersisted = !enabledProviders.isEmpty && enabledProviders.allSatisfy {
+                persistedCredentials[$0] == true
             }
             let hasUsageData = providers.allSatisfy { !($0["percent"] is NSNull) }
             let hasLiveData = providers.allSatisfy {
@@ -278,7 +284,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         popover.animates = false
         popover.appearance = darkAppearance
         popover.hasFullSizeContent = true
-        popover.contentSize = NSSize(width: 392, height: 260)
+        popover.contentSize = NSSize(width: MenuBarView.preferredWidth, height: 260)
         let hostingController = NSHostingController(
             rootView: MenuBarView(
                 detach: { [weak self] in self?.showFloatingWindow() },
@@ -292,7 +298,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func observeChanges() {
-        store.$snapshots
+        store.$providerStates
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusItem() }
             .store(in: &cancellables)
@@ -335,8 +341,25 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             popover.performClose(nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            constrainPopoverToVisibleScreen(relativeTo: button)
             installPopoverDismissMonitors()
         }
+    }
+
+    private func constrainPopoverToVisibleScreen(relativeTo button: NSStatusBarButton) {
+        guard let window = popover.contentViewController?.view.window,
+              let screen = button.window?.screen ?? NSScreen.main
+        else { return }
+
+        let visibleFrame = screen.visibleFrame.insetBy(dx: 4, dy: 4)
+        var origin = window.frame.origin
+        if window.frame.maxX > visibleFrame.maxX {
+            origin.x -= window.frame.maxX - visibleFrame.maxX
+        }
+        if origin.x < visibleFrame.minX {
+            origin.x = visibleFrame.minX
+        }
+        window.setFrameOrigin(origin)
     }
 
     private func installPopoverDismissMonitors() {
@@ -519,7 +542,8 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             .filter(providerSelection.isActive)
             .compactMap { provider in
             store.snapshots.first {
-                $0.id == provider && $0.menuBarPercent != nil
+                $0.id == provider
+                    && $0.menuBarPercent != nil
             }
             }
 
@@ -566,10 +590,13 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     ) -> String {
         snapshots.map { snapshot in
             let percent = snapshot.menuBarPercent.map { "\(Int($0.rounded()))%" } ?? "—"
+            let freshness = snapshot.source == .cached
+                ? ", \(language.text("saved data", "dato guardado"))"
+                : ""
             let reset = showResetTimes
                 ? ", \(language.text("resets in", "se reinicia en")) \(resetText(snapshot))"
                 : ""
-            return "\(snapshot.id.displayName), \(percent) \(snapshot.menuBarPeriodDescription(language: language))\(reset)"
+            return "\(snapshot.id.displayName), \(percent) \(snapshot.menuBarPeriodDescription(language: language))\(freshness)\(reset)"
         }
         .joined(separator: "; ")
     }
@@ -635,7 +662,8 @@ private struct MenuBarUsageLabel: View {
     private var visibleSnapshots: [AIUsageCore.ProviderUsageSnapshot] {
         AIUsageCore.UsageProviderID.allCases.compactMap { provider in
             snapshots.first { snapshot in
-                snapshot.id == provider && snapshot.menuBarPercent != nil
+                snapshot.id == provider
+                    && snapshot.menuBarPercent != nil
             }
         }
     }
@@ -709,12 +737,13 @@ private struct MenuBarUsageImageContent: View {
     }
 
     private func severityDot(_ snapshot: AIUsageCore.ProviderUsageSnapshot) -> some View {
-        Circle()
-            .fill(
-                AIUsageDesignSystem.UsageTheme.severity(
-                    AIUsageCore.UsageSeverity.forPercent(snapshot.menuBarPercent)
-                )
+        let color = snapshot.source == .cached
+            ? AIUsageDesignSystem.UsageTheme.cached
+            : AIUsageDesignSystem.UsageTheme.severity(
+                AIUsageCore.UsageSeverity.forPercent(snapshot.menuBarPercent)
             )
+        return Circle()
+            .fill(color)
             .frame(width: 6, height: 6)
     }
 
@@ -730,20 +759,14 @@ private struct MenuBarUsageImageContent: View {
 
 private extension AIUsageCore.ProviderUsageSnapshot {
     var menuBarPercent: Double? {
-        switch id {
-        case .claude:
-            session.usedPercent
-        case .codex:
-            weekly.usedPercent
-        }
+        primaryDisplayWindow.usedPercent
     }
 
     func menuBarPeriodDescription(language: AppLanguage) -> String {
-        switch id {
-        case .claude:
-            language.text("in the 5-hour session", "en 5 horas")
-        case .codex:
+        if id == .codex, session.usedPercent == nil, weekly.usedPercent != nil {
             language.text("for the week", "en la semana")
+        } else {
+            language.text("in the 5-hour session", "en 5 horas")
         }
     }
 }

@@ -65,16 +65,18 @@ public struct ProviderCard: View {
             Spacer()
 
             if snapshot.source == .mock || snapshot.source == .cached {
-                Text(snapshot.source == .mock ? "DEMO" : language.text("CACHED", "CACHÉ"))
+                Text(snapshot.source == .mock
+                    ? "DEMO"
+                    : snapshot.observedAt.formatted(date: .omitted, time: .shortened))
                     .font(.system(size: 9, weight: .bold))
                     .tracking(1.1)
-                    .foregroundStyle(snapshot.source == .mock ? UsageTheme.mock : UsageTheme.amber)
+                    .foregroundStyle(snapshot.source == .mock ? UsageTheme.mock : UsageTheme.cached)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 4)
-                    .background((snapshot.source == .mock ? UsageTheme.mock : UsageTheme.amber).opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+                    .background((snapshot.source == .mock ? UsageTheme.mock : UsageTheme.cached).opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
                     .overlay {
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke((snapshot.source == .mock ? UsageTheme.mock : UsageTheme.amber).opacity(0.25), lineWidth: 1)
+                            .stroke((snapshot.source == .mock ? UsageTheme.mock : UsageTheme.cached).opacity(0.25), lineWidth: 1)
                     }
             }
 

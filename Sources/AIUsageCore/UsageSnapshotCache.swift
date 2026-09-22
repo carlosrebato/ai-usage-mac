@@ -56,3 +56,21 @@ public struct UsageSnapshotCache: Sendable {
         try data.write(to: fileURL, options: .atomic)
     }
 }
+
+/// Semantic wrapper used by provider orchestration: it stores only the last
+/// useful numeric value and never replaces it with an unavailable response.
+public struct LastKnownCache: Sendable {
+    private let storage: UsageSnapshotCache
+
+    public init(fileURL: URL? = nil, fileManager: FileManager = .default) {
+        storage = UsageSnapshotCache(fileURL: fileURL, fileManager: fileManager)
+    }
+
+    public func load() -> [UsageProviderID: ProviderUsageSnapshot] {
+        storage.load()
+    }
+
+    public func save(_ snapshots: [ProviderUsageSnapshot]) throws {
+        try storage.save(snapshots)
+    }
+}

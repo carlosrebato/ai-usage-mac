@@ -15,7 +15,8 @@ logs and configuration must not become part of the release.
 - [x] Measure the installed notarized Release for one hour: 0.271% average CPU
   (0% median), 59.36 MB average RSS (56.75 MB median), and no sustained disk
   reads. See `PERFORMANCE.md` for the reproducible report and interpretation.
-- [ ] Compare the index against a clean full import on a large fixture.
+- [x] Compare the 90-day incremental index against a clean full import over
+  1.47 GB of real local history; weekly totals and daily series match exactly.
 
 ## 2. Signed permission smoke test
 
@@ -38,8 +39,9 @@ logs and configuration must not become part of the release.
   settings for forks; keep official values only in the protected release job.
 - [x] Include MIT license, contributing guide, security policy and privacy note.
 - [x] Add issue and pull-request templates plus a code of conduct.
-- [ ] Enable branch protection, required CI, Dependabot, secret scanning, push
-  protection and CodeQL.
+- [x] Enable branch protection, required CI, Dependabot, secret scanning, push
+  protection and CodeQL (verified in the authenticated repository settings on
+  2026-09-22; `main` requires the up-to-date `test-and-build` check).
 
 ## 4. Distribution
 
@@ -52,15 +54,27 @@ logs and configuration must not become part of the release.
 - [ ] Test the downloaded artifact with Gatekeeper on a clean Mac.
 - [x] Publish a GitHub Release containing the notarized ZIP, SHA-256 checksum and
   changelog.
-- [ ] Protect signing/notarization secrets in a GitHub environment with manual
-  approval; never expose them to pull-request workflows.
+- [x] Keep signing/notarization credentials exclusively in the local Keychain
+  while releases are manual. The empty GitHub `release` environment is limited
+  to protected branches, requires approval from `carlosrebato`, and does not
+  allow administrator bypass. Never expose secrets to pull-request workflows.
 - [x] Add signed automatic updates with Sparkle plus a manual “Check for Updates”.
-- [ ] Publish `appcast.xml` with every signed and notarized GitHub Release.
+- [x] Publish `appcast.xml` with every signed and notarized GitHub Release
+  (verified on `main` for `v0.1.2-beta.1`).
 
 ## 5. Product readiness
 
-- [ ] Increase small muted-text contrast to WCAG AA.
-- [ ] Add Help, Privacy and Report an Issue links.
-- [ ] Add local diagnostic export without prompts, responses or credentials.
-- [ ] Document supported Claude/Codex versions and the pricing-data update policy.
+- [x] Increase small muted-text contrast to WCAG AA (minimum measured ratio
+  4.81:1 on the lightest tinted application surface).
+- [x] Add Help, Privacy and Report an Issue links.
+- [x] Add local diagnostic export without prompts, responses or credentials.
+- [x] Document supported Claude/Codex versions and the pricing-data update policy.
 - [x] Choose the first public version (`0.1.0-beta.1`) and maintain a changelog.
+
+## 6. Release gate
+
+Run `Scripts/release-readiness.sh` against the exact app extracted from the
+downloadable ZIP. A client launch is blocked unless the script passes all unit
+and state-transition tests, bundle validation, Developer ID signature checks,
+the no-`get-task-allow` invariant, universal architectures, stapled
+notarization, Gatekeeper and three signed relaunch smoke tests.

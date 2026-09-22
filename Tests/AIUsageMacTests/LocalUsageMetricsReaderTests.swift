@@ -8,34 +8,74 @@ struct LocalUsageMetricsReaderTests {
         "Índice incremental real",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_METRICS_BENCHMARK"] == "1")
     )
-    func indexesRealLogsOnceAndThenReadsZeroBytes() async throws {
+    func indexesRealLogsOnceAndMatchesACleanRebuild() async throws {
         let indexDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ai-usage-index-benchmark-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: indexDirectory) }
+        try FileManager.default.createDirectory(
+            at: indexDirectory,
+            withIntermediateDirectories: true
+        )
+        let home = FileManager.default.homeDirectoryForCurrentUser
         let reader = LocalUsageMetricsReader(
-            indexURL: indexDirectory.appendingPathComponent("metrics.sqlite3"),
+            homeDirectory: home,
+            indexURL: indexDirectory.appendingPathComponent("incremental.sqlite3"),
             refreshInterval: 0
         )
         let end = Date.now.addingTimeInterval(1)
-        let start = end.addingTimeInterval(-60 * 24 * 60 * 60)
+        let start = end.addingTimeInterval(-90 * 24 * 60 * 60)
         let clock = ContinuousClock()
+        var indexedWeekly: [UsageProviderID: WeeklyUsageTotals] = [:]
+        var indexedDaily: [UsageProviderID: [Date: Int]] = [:]
+        var initialDiagnostics: [UsageProviderID: LocalUsageMetricsDiagnostics] = [:]
 
         let elapsed = await clock.measure {
-            _ = await reader.weeklyTotals(for: .claude, periodStart: start, periodEnd: end)
-            _ = await reader.weeklyTotals(for: .codex, periodStart: start, periodEnd: end)
+            for provider in UsageProviderID.allCases {
+                if let totals = await reader.weeklyTotals(
+                    for: provider,
+                    periodStart: start,
+                    periodEnd: end
+                ) {
+                    indexedWeekly[provider] = totals
+                }
+                initialDiagnostics[provider] = await reader.diagnostics(for: provider)
+                indexedDaily[provider] = await reader.dailyTokenTotals(
+                    for: provider,
+                    periodStart: start,
+                    periodEnd: end
+                )
+            }
         }
-        let claudeFirst = await reader.diagnostics(for: .claude)
-        let codexFirst = await reader.diagnostics(for: .codex)
-        #expect((claudeFirst?.scannedBytes ?? 0) + (codexFirst?.scannedBytes ?? 0) > 0)
-
-        let initialBytes = (claudeFirst?.scannedBytes ?? 0) + (codexFirst?.scannedBytes ?? 0)
-        _ = await reader.weeklyTotals(for: .claude, periodStart: start, periodEnd: end)
-        _ = await reader.weeklyTotals(for: .codex, periodStart: start, periodEnd: end)
+        let initialBytes = initialDiagnostics.values.reduce(0) { $0 + $1.scannedBytes }
+        #expect(initialBytes > 0)
+        for provider in UsageProviderID.allCases {
+            _ = await reader.weeklyTotals(for: provider, periodStart: start, periodEnd: end)
+        }
         let incrementalBytes = (await reader.diagnostics(for: .claude)?.scannedBytes ?? 0)
             + (await reader.diagnostics(for: .codex)?.scannedBytes ?? 0)
         #expect(incrementalBytes < max(1_000_000, initialBytes / 100))
+
+        let cleanReader = LocalUsageMetricsReader(
+            homeDirectory: home,
+            indexURL: indexDirectory.appendingPathComponent("clean.sqlite3"),
+            refreshInterval: 0
+        )
+        for provider in UsageProviderID.allCases {
+            let cleanWeekly = await cleanReader.weeklyTotals(
+                for: provider,
+                periodStart: start,
+                periodEnd: end
+            )
+            let cleanDaily = await cleanReader.dailyTokenTotals(
+                for: provider,
+                periodStart: start,
+                periodEnd: end
+            )
+            #expect(indexedWeekly[provider] == cleanWeekly)
+            #expect(indexedDaily[provider] == cleanDaily)
+        }
         print(
-            "Cold local metrics index completed in \(elapsed); "
+            "Cold local metrics index and clean-rebuild comparison completed in \(elapsed); "
                 + "initial bytes \(initialBytes), immediate incremental bytes \(incrementalBytes)"
         )
     }
