@@ -933,8 +933,8 @@ private func equivalentCostHelp(
         )
     }
     return language.text(
-        "Estimated equivalent cost using public API pricing; this is not an actual charge.",
-        "Coste equivalente estimado con las tarifas API públicas; no representa un cargo real."
+        "Equivalent cost at API rates for the current weekly period. This is an estimate.",
+        "Coste equivalente a tarifas API durante el periodo semanal actual. Estimación."
     )
 }
 
