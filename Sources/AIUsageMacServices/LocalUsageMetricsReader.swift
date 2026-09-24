@@ -324,6 +324,14 @@ private struct ModelPrice {
 
     static func codex(model: String, at _: Date) -> ModelPrice? {
         switch model.lowercased() {
+        // Standard, short-context API equivalents published at
+        // https://developers.openai.com/api/docs/pricing (checked 2026-09-24).
+        case let value where value.hasPrefix("gpt-6-astra"):
+            ModelPrice(input: 10, cachedInput: 1, cacheWrite: 12.5, longCacheWrite: 12.5, output: 50)
+        case let value where value.hasPrefix("gpt-6-sol"):
+            ModelPrice(input: 2, cachedInput: 0.2, cacheWrite: 2.5, longCacheWrite: 2.5, output: 10)
+        case let value where value.hasPrefix("gpt-6-luna"):
+            ModelPrice(input: 0.1, cachedInput: 0.01, cacheWrite: 0.125, longCacheWrite: 0.125, output: 0.5)
         case let value where value == "gpt-5.6" || value.hasPrefix("gpt-5.6-sol"):
             ModelPrice(input: 5, cachedInput: 0.5, cacheWrite: 6.25, longCacheWrite: 6.25, output: 30)
         case let value where value.hasPrefix("gpt-5.6-terra"):

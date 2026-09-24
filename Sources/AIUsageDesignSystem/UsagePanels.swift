@@ -146,6 +146,9 @@ public struct UsageDetailedMetrics: View {
 
     private func providerBlock(_ snapshot: ProviderUsageSnapshot) -> some View {
         let primary = snapshot.primaryDisplayWindow
+        let costHelp = snapshot.weeklyTotals.map {
+            equivalentCostHelp($0, language: language)
+        } ?? missingLocalHistoryHelp(language: language)
 
         return VStack(alignment: .leading, spacing: 11) {
             HStack(spacing: 10) {
@@ -218,15 +221,14 @@ public struct UsageDetailedMetrics: View {
                     label: language.text("RESETS", "REINICIA"),
                     value: UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now)
                 )
-                metric(
+                HoverCostMetric(
                     label: language.text("EST. COST", "COSTE EST."),
                     value: snapshot.weeklyTotals.map {
                         equivalentCost($0, language: language)
-                    } ?? "—"
+                    } ?? "—",
+                    help: costHelp
                 )
-                    .help(snapshot.weeklyTotals.map {
-                        equivalentCostHelp($0, language: language)
-                    } ?? missingLocalHistoryHelp(language: language))
+                .zIndex(1)
                 metric(
                     label: "TOKENS",
                     value: snapshot.weeklyTotals.map { compactTokens($0.totalTokens) } ?? "—"
@@ -274,6 +276,52 @@ public struct UsageDetailedMetrics: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+}
+
+private struct HoverCostMetric: View {
+    let label: String
+    let value: String
+    let help: String
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(1.1)
+                .foregroundStyle(UsageTheme.mutedText)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(UsageTheme.metaText)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .overlay(alignment: .bottomLeading) {
+            if isHovered {
+                Text(help)
+                    .font(.system(size: 11))
+                    .foregroundStyle(UsageTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 250, alignment: .leading)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9)
+                            .fill(UsageTheme.stage)
+                            .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9)
+                            .stroke(UsageTheme.hairline, lineWidth: 1)
+                    }
+                    .offset(y: -24)
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityHint(help)
+    }
 }
 
 public struct UsageTrendFooter: View {
@@ -901,7 +949,7 @@ private func compactNumber(_ value: Double, suffix: String) -> String {
     ) + suffix
 }
 
-private func equivalentCost(
+func equivalentCost(
     _ totals: WeeklyUsageTotals,
     language: AppLanguage
 ) -> String {
@@ -916,25 +964,19 @@ private func equivalentCost(
     return "~\(formatted)"
 }
 
-private func equivalentCostHelp(
+func equivalentCostHelp(
     _ totals: WeeklyUsageTotals,
     language: AppLanguage
 ) -> String {
     if totals.equivalentCostUSD == nil, totals.hasUnpricedModels {
         return language.text(
-            "There is not enough public pricing or model detail to estimate this period. This is not an actual charge.",
-            "No hay desglose o tarifa pública suficiente para estimar este periodo. No representa un cargo real."
-        )
-    }
-    if totals.hasUnpricedModels {
-        return language.text(
-            "Minimum estimate using public API pricing; some usage has no public price or model breakdown. This is not an actual charge.",
-            "Estimación mínima con tarifas API públicas; parte del uso no tiene tarifa o desglose disponible. No representa un cargo real."
+            "No public API rate or model breakdown is available for this period. Tokens and limits still update normally.",
+            "No hay tarifa API pública o desglose suficiente para este periodo. Los tokens y límites siguen actualizándose."
         )
     }
     return language.text(
-        "Estimated equivalent cost using public API pricing; this is not an actual charge.",
-        "Coste equivalente estimado con las tarifas API públicas; no representa un cargo real."
+        "Equivalent cost at API rates for the current weekly period. This is an estimate.",
+        "Coste equivalente a tarifas API durante el periodo semanal actual. Estimación."
     )
 }
 

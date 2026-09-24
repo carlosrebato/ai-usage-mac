@@ -167,6 +167,67 @@ struct LocalUsageMetricsReaderTests {
         #expect(totals?.hasUnpricedModels == false)
     }
 
+    @Test func codexPricesPublishedGPTSixModels() async throws {
+        let cases: [(model: String, expectedCost: Double)] = [
+            ("gpt-6-astra", 0.00114),
+            ("gpt-6-sol", 0.000228),
+            ("gpt-6-luna", 0.0000114)
+        ]
+        for item in cases {
+            let home = temporaryHome()
+            let file = home
+                .appendingPathComponent(".codex/sessions/2026/09/24", isDirectory: true)
+                .appendingPathComponent("rollout.jsonl")
+            try writeLines([
+                "{\"timestamp\":\"2026-09-24T10:00:00Z\",\"type\":\"turn_context\",\"payload\":{\"model\":\"\(item.model)\"}}",
+                codexTokenLine(
+                    input: 100,
+                    cached: 40,
+                    output: 10,
+                    reasoning: 2,
+                    total: 110,
+                    timestamp: "2026-09-24T10:01:00Z"
+                )
+            ], to: file)
+
+            let totals = await LocalUsageMetricsReader(homeDirectory: home).weeklyTotals(
+                for: .codex,
+                periodStart: date("2026-09-24T00:00:00Z"),
+                periodEnd: date("2026-09-25T00:00:00Z")
+            )
+            #expect(totals?.totalTokens == 110)
+            #expect(abs((totals?.equivalentCostUSD ?? 0) - item.expectedCost) < 0.000_000_001)
+            #expect(totals?.hasUnpricedModels == false)
+        }
+    }
+
+    @Test func codexUnpricedAliasKeepsTokensWithoutInventingACost() async throws {
+        let home = temporaryHome()
+        let file = home
+            .appendingPathComponent(".codex/sessions/2026/09/24", isDirectory: true)
+            .appendingPathComponent("rollout.jsonl")
+        try writeLines([
+            #"{"timestamp":"2026-09-24T10:00:00Z","type":"turn_context","payload":{"model":"codex-auto-review"}}"#,
+            codexTokenLine(
+                input: 100,
+                cached: 40,
+                output: 10,
+                reasoning: 2,
+                total: 110,
+                timestamp: "2026-09-24T10:01:00Z"
+            )
+        ], to: file)
+
+        let totals = await LocalUsageMetricsReader(homeDirectory: home).weeklyTotals(
+            for: .codex,
+            periodStart: date("2026-09-24T00:00:00Z"),
+            periodEnd: date("2026-09-25T00:00:00Z")
+        )
+        #expect(totals?.totalTokens == 110)
+        #expect(totals?.equivalentCostUSD == nil)
+        #expect(totals?.hasUnpricedModels == true)
+    }
+
     @Test func claudeOpusFiveUsesCurrentPublicPricing() async throws {
         let home = temporaryHome()
         let file = home

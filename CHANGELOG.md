@@ -2,6 +2,15 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.3-beta.3 — 2026-09-24
+
+- Explain the weekly API-equivalent cost on hover using the approved copy,
+  without resizing the panel or adding an info button. Show N/A when no public
+  price or model breakdown can support an estimate.
+- Add public standard API rates for GPT-6 Astra, Sol and Luna; keep unknown
+  Codex model aliases unpriced instead of guessing their cost.
+- Clarify that the displayed estimate covers the current weekly period.
+
 ## 0.1.3-beta.2 — 2026-09-22
 
 - Keep local token totals and estimated cost available while a connected

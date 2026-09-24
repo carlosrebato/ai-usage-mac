@@ -53,6 +53,11 @@ let package = Package(
             exclude: ["Assets.xcassets"]
         ),
         .testTarget(
+            name: "AIUsageDesignSystemTests",
+            dependencies: ["AIUsageCore", "AIUsageDesignSystem"],
+            path: "Tests/AIUsageDesignSystemTests"
+        ),
+        .testTarget(
             name: "AIUsageMacTests",
             dependencies: ["AIUsageCore", "AIUsageProviderServices", "AIUsageMacServices"],
             path: "Tests/AIUsageMacTests"
