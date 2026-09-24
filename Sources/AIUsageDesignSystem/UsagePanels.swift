@@ -103,8 +103,6 @@ public struct UsageDetailedMetrics: View {
     public let now: Date
     public let history: UsageHistory
     public let language: AppLanguage
-    @State private var hoveredCostProvider: UsageProviderID?
-    @State private var expandedCostProvider: UsageProviderID?
 
     public init(
         snapshots: [ProviderUsageSnapshot],
@@ -223,33 +221,14 @@ public struct UsageDetailedMetrics: View {
                     label: language.text("RESETS", "REINICIA"),
                     value: UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now)
                 )
-                HStack(spacing: 4) {
-                    metric(
-                        label: language.text("EST. COST", "COSTE EST."),
-                        value: snapshot.weeklyTotals.map {
-                            equivalentCost($0, language: language)
-                        } ?? "—"
-                    )
-                    Button {
-                        expandedCostProvider = expandedCostProvider == snapshot.id ? nil : snapshot.id
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(UsageTheme.mutedText)
-                            .frame(width: 18, height: 18)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(language.text("About estimated cost", "Sobre el coste estimado"))
-                    .accessibilityHint(costHelp)
-                }
-                .contentShape(Rectangle())
-                .onHover { isHovering in
-                    if isHovering {
-                        hoveredCostProvider = snapshot.id
-                    } else if hoveredCostProvider == snapshot.id {
-                        hoveredCostProvider = nil
-                    }
-                }
+                HoverCostMetric(
+                    label: language.text("EST. COST", "COSTE EST."),
+                    value: snapshot.weeklyTotals.map {
+                        equivalentCost($0, language: language)
+                    } ?? "—",
+                    help: costHelp
+                )
+                .zIndex(1)
                 metric(
                     label: "TOKENS",
                     value: snapshot.weeklyTotals.map { compactTokens($0.totalTokens) } ?? "—"
@@ -279,13 +258,6 @@ public struct UsageDetailedMetrics: View {
                         .foregroundStyle(UsageTheme.red)
                 }
             }
-            if hoveredCostProvider == snapshot.id || expandedCostProvider == snapshot.id {
-                Text(costHelp)
-                    .font(.system(size: 11))
-                    .foregroundStyle(UsageTheme.metaText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isStaticText)
-            }
         }
     }
 
@@ -304,6 +276,52 @@ public struct UsageDetailedMetrics: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+}
+
+private struct HoverCostMetric: View {
+    let label: String
+    let value: String
+    let help: String
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(1.1)
+                .foregroundStyle(UsageTheme.mutedText)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(UsageTheme.metaText)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .overlay(alignment: .bottomLeading) {
+            if isHovered {
+                Text(help)
+                    .font(.system(size: 11))
+                    .foregroundStyle(UsageTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 250, alignment: .leading)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9)
+                            .fill(UsageTheme.stage)
+                            .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9)
+                            .stroke(UsageTheme.hairline, lineWidth: 1)
+                    }
+                    .offset(y: -24)
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityHint(help)
+    }
 }
 
 public struct UsageTrendFooter: View {
