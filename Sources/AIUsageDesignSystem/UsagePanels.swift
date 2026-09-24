@@ -103,6 +103,8 @@ public struct UsageDetailedMetrics: View {
     public let now: Date
     public let history: UsageHistory
     public let language: AppLanguage
+    @State private var hoveredCostProvider: UsageProviderID?
+    @State private var expandedCostProvider: UsageProviderID?
 
     public init(
         snapshots: [ProviderUsageSnapshot],
@@ -146,6 +148,9 @@ public struct UsageDetailedMetrics: View {
 
     private func providerBlock(_ snapshot: ProviderUsageSnapshot) -> some View {
         let primary = snapshot.primaryDisplayWindow
+        let costHelp = snapshot.weeklyTotals.map {
+            equivalentCostHelp($0, language: language)
+        } ?? missingLocalHistoryHelp(language: language)
 
         return VStack(alignment: .leading, spacing: 11) {
             HStack(spacing: 10) {
@@ -218,15 +223,33 @@ public struct UsageDetailedMetrics: View {
                     label: language.text("RESETS", "REINICIA"),
                     value: UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now)
                 )
-                metric(
-                    label: language.text("EST. COST", "COSTE EST."),
-                    value: snapshot.weeklyTotals.map {
-                        equivalentCost($0, language: language)
-                    } ?? "—"
-                )
-                    .help(snapshot.weeklyTotals.map {
-                        equivalentCostHelp($0, language: language)
-                    } ?? missingLocalHistoryHelp(language: language))
+                HStack(spacing: 4) {
+                    metric(
+                        label: language.text("EST. COST", "COSTE EST."),
+                        value: snapshot.weeklyTotals.map {
+                            equivalentCost($0, language: language)
+                        } ?? "—"
+                    )
+                    Button {
+                        expandedCostProvider = expandedCostProvider == snapshot.id ? nil : snapshot.id
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(UsageTheme.mutedText)
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(language.text("About estimated cost", "Sobre el coste estimado"))
+                    .accessibilityHint(costHelp)
+                }
+                .contentShape(Rectangle())
+                .onHover { isHovering in
+                    if isHovering {
+                        hoveredCostProvider = snapshot.id
+                    } else if hoveredCostProvider == snapshot.id {
+                        hoveredCostProvider = nil
+                    }
+                }
                 metric(
                     label: "TOKENS",
                     value: snapshot.weeklyTotals.map { compactTokens($0.totalTokens) } ?? "—"
@@ -255,6 +278,13 @@ public struct UsageDetailedMetrics: View {
                         .tracking(1.1)
                         .foregroundStyle(UsageTheme.red)
                 }
+            }
+            if hoveredCostProvider == snapshot.id || expandedCostProvider == snapshot.id {
+                Text(costHelp)
+                    .font(.system(size: 11))
+                    .foregroundStyle(UsageTheme.metaText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isStaticText)
             }
         }
     }
@@ -922,8 +952,8 @@ private func equivalentCostHelp(
 ) -> String {
     if totals.equivalentCostUSD == nil, totals.hasUnpricedModels {
         return language.text(
-            "There is not enough public pricing or model detail to estimate this period. This is not an actual charge.",
-            "No hay desglose o tarifa pública suficiente para estimar este periodo. No representa un cargo real."
+            "No public API rate or model breakdown is available for this period. Tokens and limits still update normally.",
+            "No hay tarifa API pública o desglose suficiente para este periodo. Los tokens y límites siguen actualizándose."
         )
     }
     if totals.hasUnpricedModels {
