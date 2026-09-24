@@ -961,8 +961,7 @@ func equivalentCost(
             .precision(.fractionLength(cost >= 100 ? 0 : 2))
             .locale(Locale(identifier: "en_US"))
     )
-    // An unpriced model makes the calculated amount a lower bound.
-    return "~\(formatted)\(totals.hasUnpricedModels ? "+" : "")"
+    return "~\(formatted)"
 }
 
 func equivalentCostHelp(

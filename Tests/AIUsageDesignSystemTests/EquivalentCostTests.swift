@@ -15,7 +15,7 @@ struct EquivalentCostTests {
         #expect(equivalentCostHelp(partial, language: .spanish)
             == "Coste equivalente a tarifas API durante el periodo semanal actual. Estimación.")
         #expect(equivalentCost(complete, language: .english) == "~$105")
-        #expect(equivalentCost(partial, language: .english) == "~$105+")
+        #expect(equivalentCost(partial, language: .english) == "~$105")
     }
 
     @Test func unavailablePriceIsNotPresentedAsAnEstimate() {
