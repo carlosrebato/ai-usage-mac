@@ -399,7 +399,8 @@ public final class UsageStore: ObservableObject {
                 id: provider,
                 phase: .actionRequired(.signIn),
                 dataState: .reauthRequired,
-                message: error.localizedDescription
+                message: error.localizedDescription,
+                notice: .error
             ))
             try? cache.save(snapshots)
             WidgetCenter.shared.reloadTimelines(ofKind: AIUsageWidgetKind.summary)

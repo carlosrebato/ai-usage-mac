@@ -11,7 +11,7 @@ struct SettingsView: View {
     private struct ProviderPresentation {
         let detail: String
         let badge: String
-        let color: Color
+        let color: Color?
         let isConnected: Bool
         let isBusy: Bool
     }
@@ -192,10 +192,12 @@ struct SettingsView: View {
 
                 Spacer()
 
-                Circle()
-                    .fill(presentation.color)
-                    .frame(width: 7, height: 7)
-                    .shadow(color: presentation.color.opacity(0.55), radius: 5)
+                if let color = presentation.color {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: color.opacity(0.55), radius: 5)
+                }
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -593,10 +595,18 @@ struct SettingsView: View {
                 isBusy: true
             )
         case .actionRequired:
+            let notice = status?.notice ?? .none
+            let color: Color? = switch notice {
+            case .none: nil
+            case .attention: UsageTheme.amber
+            case .error: UsageTheme.red
+            }
             return ProviderPresentation(
-                detail: status?.message ?? language.text("Setup required", "Necesita configuración"),
-                badge: language.text("Attention", "Atención"),
-                color: UsageTheme.amber,
+                detail: status?.message(in: language) ?? language.text("Setup required", "Necesita configuración"),
+                badge: notice == .none
+                    ? language.text("Not connected", "Sin conectar")
+                    : language.text("Attention", "Atención"),
+                color: color,
                 isConnected: false,
                 isBusy: false
             )
@@ -612,7 +622,7 @@ struct SettingsView: View {
             return ProviderPresentation(
                 detail: snapshot?.message ?? language.text("No data", "Sin datos"),
                 badge: language.text("Not connected", "Sin conectar"),
-                color: SettingsPalette.faint,
+                color: nil,
                 isConnected: false,
                 isBusy: false
             )
