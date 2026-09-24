@@ -949,7 +949,7 @@ private func compactNumber(_ value: Double, suffix: String) -> String {
     ) + suffix
 }
 
-private func equivalentCost(
+func equivalentCost(
     _ totals: WeeklyUsageTotals,
     language: AppLanguage
 ) -> String {
@@ -961,10 +961,11 @@ private func equivalentCost(
             .precision(.fractionLength(cost >= 100 ? 0 : 2))
             .locale(Locale(identifier: "en_US"))
     )
-    return "~\(formatted)"
+    // An unpriced model makes the calculated amount a lower bound.
+    return "~\(formatted)\(totals.hasUnpricedModels ? "+" : "")"
 }
 
-private func equivalentCostHelp(
+func equivalentCostHelp(
     _ totals: WeeklyUsageTotals,
     language: AppLanguage
 ) -> String {
@@ -972,12 +973,6 @@ private func equivalentCostHelp(
         return language.text(
             "No public API rate or model breakdown is available for this period. Tokens and limits still update normally.",
             "No hay tarifa API pública o desglose suficiente para este periodo. Los tokens y límites siguen actualizándose."
-        )
-    }
-    if totals.hasUnpricedModels {
-        return language.text(
-            "Minimum estimate using public API pricing; some usage has no public price or model breakdown. This is not an actual charge.",
-            "Estimación mínima con tarifas API públicas; parte del uso no tiene tarifa o desglose disponible. No representa un cargo real."
         )
     }
     return language.text(
