@@ -6,8 +6,12 @@ All notable changes to AI Usage for Mac are documented here.
 
 - Offer optional local token-history access as part of the first provider
   connection, while keeping live limits connected if the folder is skipped.
-- Keep optional history out of the connected assistant cards in Settings;
-  it remains available from Manage.
+- Keep the optional local-history action available after a user skips it,
+  explaining that it reads local CLI files for tokens and estimated cost without
+  affecting live limits.
+- Explain when connected assistants are hidden from the menu bar. If an
+  offscreen icon render fails, show the available percentages as text instead
+  of leaving the launch icon in place.
 
 ## 0.1.4-rc.2 — 2026-09-25
 

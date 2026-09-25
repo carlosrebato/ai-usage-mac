@@ -29,7 +29,7 @@ Their command-line tools are optional and are used only when you choose to add
 local token, activity and estimated-cost history on Mac.
 The initial connection offers that read-only folder selection in the same setup
 flow. Canceling it keeps live limits connected; local history can be added
-later from Manage.
+later from Settings or Manage.
 
 ### Provider compatibility and pricing
 

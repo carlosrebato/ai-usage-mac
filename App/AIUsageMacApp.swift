@@ -555,10 +555,25 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 ?? NSApplication.shared.applicationIconImage)?.copy() as? NSImage
             image?.size = NSSize(width: 18, height: 18)
             image?.isTemplate = false
+            button.title = ""
+            button.imagePosition = .imageOnly
             button.image = image
-            button.toolTip = snapshots.isEmpty
-                ? language.text("AI Usage has no data", "AI Usage sin datos")
-                : "AI Usage"
+            if !showPercentage {
+                button.toolTip = language.text(
+                    "AI Usage · Menu bar percentages are turned off",
+                    "AI Usage · Los porcentajes de la barra de menú están desactivados"
+                )
+            } else if !providerSelection.hasActiveProvider {
+                button.toolTip = language.text(
+                    "AI Usage · No assistant is shown. Choose Show in Manage.",
+                    "AI Usage · No hay asistentes visibles. Pulsa Mostrar en Gestionar."
+                )
+            } else {
+                button.toolTip = language.text(
+                    "AI Usage · Waiting for usage percentages",
+                    "AI Usage · Esperando los porcentajes de uso"
+                )
+            }
             statusItem.length = NSStatusItem.squareLength
             return
         }
@@ -575,8 +590,27 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             )
         )
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return }
+        guard let image = renderer.nsImage else {
+            // A failed SwiftUI offscreen render must not leave the launch icon
+            // in place when usable percentages are already available.
+            button.image = nil
+            button.imagePosition = .noImage
+            button.title = snapshots.compactMap { snapshot in
+                snapshot.menuBarPercent.map {
+                    "\(snapshot.id == .claude ? "C" : "X") \(Int($0.rounded()))%"
+                }
+            }.joined(separator: "  ")
+            button.toolTip = accessibilityText(
+                snapshots: snapshots,
+                language: language,
+                showResetTimes: showResetTimes
+            )
+            statusItem.length = NSStatusItem.variableLength
+            return
+        }
         image.isTemplate = false
+        button.title = ""
+        button.imagePosition = .imageOnly
         button.image = image
         button.toolTip = accessibilityText(
             snapshots: snapshots,

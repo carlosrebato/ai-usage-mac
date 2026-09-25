@@ -30,8 +30,6 @@ struct OnboardingView: View {
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
     @AppStorage(AppPreferenceKey.onboardingCompleted) private var onboardingCompleted = false
-    @AppStorage(AppPreferenceKey.skippedClaudeTokenHistory) private var skippedClaudeTokenHistory = false
-    @AppStorage(AppPreferenceKey.skippedCodexTokenHistory) private var skippedCodexTokenHistory = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
     @StateObject private var launchAtLogin = LaunchAtLoginController()
     @State private var busyProvider: UsageProviderID?
@@ -303,7 +301,6 @@ struct OnboardingView: View {
             && !ProviderDataAccess.shared.hasUsableAccess(
                 for: metricsDirectory(for: provider)
             )
-            && (!isOnboarding || !skippedTokenHistory(for: provider))
 
         return HStack(spacing: 14) {
             ProviderGlyph(provider: provider, size: 18, color: SettingsPalette.glyph)
@@ -740,10 +737,6 @@ struct OnboardingView: View {
                 }
             }
         }
-    }
-
-    private func skippedTokenHistory(for provider: UsageProviderID) -> Bool {
-        provider == .claude ? skippedClaudeTokenHistory : skippedCodexTokenHistory
     }
 
     private func connect(_ provider: UsageProviderID) async {
