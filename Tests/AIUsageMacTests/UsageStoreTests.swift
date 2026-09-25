@@ -590,8 +590,31 @@ struct UsageStoreTests {
         #expect(status?.phase == .actionRequired(.signIn))
         #expect(status?.dataState == .reauthRequired)
         #expect(status?.message == "Authorization rejected")
+        #expect(status?.notice == .error)
+        #expect(status?.message(in: .spanish) == "Authorization rejected")
         #expect(snapshot?.source == .unavailable)
         #expect(snapshot?.message == "Authorization rejected")
+    }
+
+    @Test @MainActor func neverConnectedCodexIsNeutralWhileClaudeIsConnected() async {
+        let store = UsageStore(
+            codexConnector: FailingConnector(error: .notAuthenticated("No Codex session")),
+            claudeConnector: ScriptedConnector(
+                providerID: .claude,
+                steps: [.success(claudeSnapshot(percent: 18, source: .live))]
+            ),
+            cache: temporaryCache()
+        )
+
+        await store.refresh()
+
+        let codex = store.connectionStatuses.first { $0.id == .codex }
+        let claude = store.connectionStatuses.first { $0.id == .claude }
+        #expect(codex?.phase == .actionRequired(.signIn))
+        #expect(codex?.notice == ProviderConnectionNotice.none)
+        #expect(codex?.message(in: .spanish) == "Conecta AI Usage para consultar tu uso.")
+        #expect(claude?.isConnected == true)
+        #expect(store.snapshots.first { $0.id == .codex }?.source == .unavailable)
     }
 
     @Test @MainActor func diagnosticReportExcludesProviderMessagesAndSecrets() async throws {
@@ -762,6 +785,8 @@ struct UsageStoreTests {
         #expect(codex?.phase == .actionRequired(.signIn))
         #expect(codex?.dataState == .reauthRequired)
         #expect(codex?.message == "Connect AI Usage to read your usage.")
+        #expect(codex?.notice == ProviderConnectionNotice.none)
+        #expect(codex?.message(in: .spanish) == "Conecta AI Usage para consultar tu uso.")
         #expect(store.snapshots.first { $0.id == .codex }?.source == .unavailable)
         #expect(cache.load()[.codex] == nil)
     }

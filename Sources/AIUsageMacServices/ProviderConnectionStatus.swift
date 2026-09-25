@@ -15,22 +15,31 @@ public enum ProviderConnectionPhase: Equatable, Sendable {
     case retrying
 }
 
+public enum ProviderConnectionNotice: Equatable, Sendable {
+    case none
+    case attention
+    case error
+}
+
 public struct ProviderConnectionStatus: Identifiable, Equatable, Sendable {
     public let id: UsageProviderID
     public let phase: ProviderConnectionPhase
     public let dataState: ProviderDataState
     public let message: String
+    public let notice: ProviderConnectionNotice
 
     public init(
         id: UsageProviderID,
         phase: ProviderConnectionPhase,
         dataState: ProviderDataState? = nil,
-        message: String
+        message: String,
+        notice: ProviderConnectionNotice? = nil
     ) {
         self.id = id
         self.phase = phase
         self.dataState = dataState ?? Self.defaultState(for: phase)
         self.message = message
+        self.notice = notice ?? Self.defaultNotice(for: phase)
     }
 
     public var isConnected: Bool {
@@ -42,6 +51,24 @@ public struct ProviderConnectionStatus: Identifiable, Equatable, Sendable {
         case .actionRequired(let action): action
         case .retrying: .retry
         case .checking, .connected: nil
+        }
+    }
+
+    public func message(in language: AppLanguage) -> String {
+        if phase == .actionRequired(.signIn), notice == .none {
+            return language.text(
+                "Connect AI Usage to read your usage.",
+                "Conecta AI Usage para consultar tu uso."
+            )
+        }
+        return message
+    }
+
+    private static func defaultNotice(for phase: ProviderConnectionPhase) -> ProviderConnectionNotice {
+        switch phase {
+        case .actionRequired(.grantPermission), .checking: .attention
+        case .actionRequired(.retry), .retrying: .error
+        case .connected, .actionRequired(.signIn), .actionRequired(.install): .none
         }
     }
 

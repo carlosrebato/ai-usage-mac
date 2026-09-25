@@ -405,7 +405,9 @@ struct OnboardingView: View {
                 .fill(UsageTheme.red)
                 .frame(width: 7, height: 7)
                 .shadow(color: UsageTheme.red.opacity(0.45), radius: 4)
-        case .none, .information:
+        case .none:
+            EmptyView()
+        case .information:
             Circle()
                 .fill(Color.white.opacity(0.25))
                 .frame(width: 7, height: 7)
@@ -593,14 +595,20 @@ struct OnboardingView: View {
                 actionIsQuiet: false
             )
         case .actionRequired(let action):
-            return actionState(action, provider: provider, message: status.message)
+            return actionState(
+                action,
+                provider: provider,
+                message: status.message(in: language),
+                notice: status.notice
+            )
         }
     }
 
     private func actionState(
         _ action: ProviderSetupAction,
         provider: UsageProviderID,
-        message: String
+        message: String,
+        notice: ProviderConnectionNotice
     ) -> CardState {
         switch action {
         case .grantPermission:
@@ -616,9 +624,11 @@ struct OnboardingView: View {
             )
         case .signIn:
             return CardState(
-                title: language.text("Connect AI Usage", "Conecta AI Usage"),
+                title: notice == .error
+                    ? language.text("Could not connect", "No se pudo conectar")
+                    : language.text("Connect AI Usage", "Conecta AI Usage"),
                 subtitle: message,
-                indicator: .attention,
+                indicator: notice == .error ? .error : .none,
                 actionTitle: language.text(
                     "Connect \(provider == .claude ? "Claude" : "Codex")",
                     "Conectar \(provider == .claude ? "Claude" : "Codex")"
