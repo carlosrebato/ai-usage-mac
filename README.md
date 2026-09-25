@@ -39,7 +39,9 @@ to live limits instead of changing connection state.
 
 Claude and Codex limit endpoints are not documented for third-party clients and
 can change without notice. Every release is smoke-tested against both providers;
-a provider can be disabled independently if compatibility breaks. Supported
+the signed [remote safety policy](REMOTE_POLICY.md) can pause direct requests
+for one provider without changing the app's code. Documented local fallbacks
+may remain available on macOS. Supported
 capabilities and the release-blocking checks are documented in
 [OAUTH_CAPABILITIES.md](OAUTH_CAPABILITIES.md).
 

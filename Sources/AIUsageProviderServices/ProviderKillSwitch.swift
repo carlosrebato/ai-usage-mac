@@ -25,6 +25,7 @@ public actor ProviderKillSwitch {
     private let configuration: Configuration?
     private var policy: Policy?
     private var loaded = false
+    private var refreshTask: Task<Void, Never>?
 
     public init() {
         session = .shared
@@ -65,14 +66,30 @@ public actor ProviderKillSwitch {
     }
 
     private func refreshIfDue() async {
+        if let refreshTask {
+            await refreshTask.value
+            return
+        }
         guard let configuration else { return }
         let lastCheck = defaults.object(forKey: Keys.lastCheck) as? Date ?? .distantPast
         guard now().timeIntervalSince(lastCheck) >= 24 * 60 * 60 else { return }
         // Mark before the request so a failing endpoint cannot create a polling loop.
         defaults.set(now(), forKey: Keys.lastCheck)
+        let task = Task { await fetchPolicy(from: configuration) }
+        refreshTask = task
+        await task.value
+        refreshTask = nil
+    }
+
+    private func fetchPolicy(from configuration: Configuration) async {
         do {
-            let (data, response) = try await session.data(from: configuration.url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            var request = URLRequest(url: configuration.url)
+            request.timeoutInterval = 4
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  http.statusCode == 200,
+                  data.count <= 16 * 1024 else { return }
             let verified = try Self.verify(data, publicKey: configuration.publicKey)
             policy = verified
             defaults.set(try JSONEncoder().encode(verified), forKey: Keys.policy)

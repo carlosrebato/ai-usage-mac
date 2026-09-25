@@ -64,8 +64,9 @@ the App Review spike pass.
 
 ## Signed safety switch
 
-Release builds may set `AI_USAGE_REMOTE_CONFIG_URL` and
-`AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY`. The app accepts only a P-256 signed schema
+Release builds set `AI_USAGE_REMOTE_CONFIG_URL` and
+`AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY` as documented in [REMOTE_POLICY.md](REMOTE_POLICY.md).
+The app accepts only a P-256 signed schema
 containing disabled providers, a minimum version, a notice and validity dates.
 It checks at most daily, retains only a verified cached policy and cannot change
 an endpoint, scope or executable logic. Signing keys are not stored in this
