@@ -2,6 +2,12 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.4-rc.2 — 2026-09-25
+
+- Keep automatic updates on the stable channel by default, with an explicit
+  beta opt-in in Settings → Updates for testers.
+- Separate prereleases from stable builds in the signed Sparkle appcast.
+
 ## 0.1.4-rc.1 — 2026-09-25
 
 - Show assistants that have never been connected without a warning dot; keep
