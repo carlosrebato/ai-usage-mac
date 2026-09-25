@@ -410,8 +410,8 @@
 				AI_USAGE_APP_BUNDLE_ID = com.example.aiusage;
 				AI_USAGE_APP_GROUP = group.com.example.aiusage;
 				AI_USAGE_IOS_BUNDLE_ID = com.example.aiusage.ios;
-				AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY = "";
-				AI_USAGE_REMOTE_CONFIG_URL = "";
+				AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY = "BFJtmjTmd1rDBULsDC8N2uUduNcBYG1pZlV4ZWUv7ye4ep58ZqTUqH0020/dUD4gLclfvglE8JD3F0XujaDm5PE=";
+				AI_USAGE_REMOTE_CONFIG_URL = "https://raw.githubusercontent.com/carlosrebato/ai-usage-mac/main/remote-policy.json";
 				AI_USAGE_WIDGET_BUNDLE_ID = "$(AI_USAGE_APP_BUNDLE_ID).widgets";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -560,8 +560,8 @@
 				AI_USAGE_APP_BUNDLE_ID = com.example.aiusage;
 				AI_USAGE_APP_GROUP = group.com.example.aiusage;
 				AI_USAGE_IOS_BUNDLE_ID = com.example.aiusage.ios;
-				AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY = "";
-				AI_USAGE_REMOTE_CONFIG_URL = "";
+				AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY = "BFJtmjTmd1rDBULsDC8N2uUduNcBYG1pZlV4ZWUv7ye4ep58ZqTUqH0020/dUD4gLclfvglE8JD3F0XujaDm5PE=";
+				AI_USAGE_REMOTE_CONFIG_URL = "https://raw.githubusercontent.com/carlosrebato/ai-usage-mac/main/remote-policy.json";
 				AI_USAGE_WIDGET_BUNDLE_ID = "$(AI_USAGE_APP_BUNDLE_ID).widgets";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
