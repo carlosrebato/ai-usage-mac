@@ -61,6 +61,15 @@ logs and configuration must not become part of the release.
 - [x] Add signed automatic updates with Sparkle plus a manual “Check for Updates”.
 - [x] Publish `appcast.xml` with every signed and notarized GitHub Release
   (verified on `main` for `v0.1.2-beta.1`).
+- [ ] Release stable builds in the default Sparkle channel and prereleases in
+  the `beta` channel. Generate a prerelease feed with
+  `Scripts/generate-appcast.sh TAG ARCHIVES beta`; the script rejects a
+  prerelease tag in the stable channel. Keep both channels in the same signed
+  `appcast.xml`. Users default to stable updates and may opt into beta in
+  Settings → Updates. Do not publish a beta in the default channel.
+- [ ] Confirm a stable installation auto-checks and does not offer a beta,
+  while a beta opt-in installation receives a newer beta. Check this with two
+  separate macOS users or machines before calling this client-ready.
 
 ## 5. Product readiness
 

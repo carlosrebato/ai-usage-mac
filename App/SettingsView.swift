@@ -21,6 +21,7 @@ struct SettingsView: View {
     @EnvironmentObject private var providerSelection: ProviderSelectionStore
     @Environment(\.openWindow) private var openWindow
     @AppStorage(AppPreferenceKey.automaticRefresh) private var automaticRefresh = true
+    @AppStorage(AppPreferenceKey.receiveBetaUpdates) private var receiveBetaUpdates = false
     @AppStorage(AppPreferenceKey.showPercentageInMenuBar) private var showPercentage = true
     @AppStorage(AppPreferenceKey.showResetTimesInMenuBar) private var showResetTimes = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
@@ -432,12 +433,38 @@ struct SettingsView: View {
 
             Spacer(minLength: 10)
 
-            SettingsLinkButton(title: language.text(
-                "Check for Updates…",
-                "Buscar actualizaciones…"
-            )) {
-                AppUpdater.shared.checkForUpdates()
+            Menu {
+                Button(language.text("Check for Updates…", "Buscar actualizaciones…")) {
+                    AppUpdater.shared.checkForUpdates()
+                }
+
+                Divider()
+
+                Button {
+                    selectUpdateChannel(beta: false)
+                } label: {
+                    if receiveBetaUpdates {
+                        Text(language.text("Stable updates", "Actualizaciones estables"))
+                    } else {
+                        Label(language.text("Stable updates", "Actualizaciones estables"), systemImage: "checkmark")
+                    }
+                }
+
+                Button {
+                    selectUpdateChannel(beta: true)
+                } label: {
+                    if receiveBetaUpdates {
+                        Label(language.text("Beta updates", "Actualizaciones beta"), systemImage: "checkmark")
+                    } else {
+                        Text(language.text("Beta updates", "Actualizaciones beta"))
+                    }
+                }
+            } label: {
+                Text(language.text("Updates…", "Actualizaciones…"))
             }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .tint(SettingsPalette.accent)
 
             SettingsQuitButton(title: language.text("Quit AI Usage", "Salir de AI Usage")) {
                 NSApplication.shared.terminate(nil)
@@ -451,6 +478,12 @@ struct SettingsView: View {
                 .fill(Color.white.opacity(0.05))
                 .frame(height: 1)
         }
+    }
+
+    private func selectUpdateChannel(beta: Bool) {
+        guard receiveBetaUpdates != beta else { return }
+        receiveBetaUpdates = beta
+        AppUpdater.shared.updateChannelSelection()
     }
 
     private func settingsSection<Content: View>(

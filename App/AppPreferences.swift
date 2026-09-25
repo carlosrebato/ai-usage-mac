@@ -52,6 +52,7 @@ final class ProviderSelectionStore: ObservableObject {
 
 enum AppPreferenceKey {
     static let automaticRefresh = "automaticRefresh"
+    static let receiveBetaUpdates = "receiveBetaUpdates"
     static let showPercentageInMenuBar = "showPercentageInMenuBar"
     static let showResetTimesInMenuBar = "showResetTimesInMenuBar"
     static let menuBarExpanded = "menuBarExpanded"
