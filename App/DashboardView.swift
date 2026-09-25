@@ -142,24 +142,30 @@ struct UsageHeaderFreshnessLine: View {
                 .foregroundStyle(UsageTheme.mutedText)
         } else {
             let freshness = UsageFreshness(snapshots: snapshots, now: now)
-            HStack(spacing: 4) {
-                Text(statusText(freshness))
-                    .foregroundStyle(
-                        freshness.kind == .cached
-                            ? UsageTheme.cached.opacity(0.82)
-                            : UsageTheme.mutedText
-                    )
+            if freshness.kind == .unavailable {
+                Text(language.text("No usage data", "Sin datos de uso"))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(UsageTheme.mutedText)
+            } else {
+                HStack(spacing: 4) {
+                    Text(statusText(freshness))
+                        .foregroundStyle(
+                            freshness.kind == .cached
+                                ? UsageTheme.cached.opacity(0.82)
+                                : UsageTheme.mutedText
+                        )
 
-                Image(systemName: freshness.kind == .cached ? "clock.fill" : "checkmark")
-                    .font(.system(size: 7.5, weight: .bold))
-                    .foregroundStyle(
-                        freshness.kind == .cached
-                            ? UsageTheme.cached.opacity(0.82)
-                            : UsageTheme.green.opacity(0.72)
-                    )
+                    Image(systemName: freshness.kind == .cached ? "clock.fill" : "checkmark")
+                        .font(.system(size: 7.5, weight: .bold))
+                        .foregroundStyle(
+                            freshness.kind == .cached
+                                ? UsageTheme.cached.opacity(0.82)
+                                : UsageTheme.green.opacity(0.72)
+                        )
+                }
+                .font(.system(size: 10.5, weight: .medium))
+                .accessibilityElement(children: .combine)
             }
-            .font(.system(size: 10.5, weight: .medium))
-            .accessibilityElement(children: .combine)
         }
     }
 

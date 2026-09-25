@@ -163,6 +163,20 @@ struct UsageSnapshotTests {
         #expect(freshness.date == now)
     }
 
+    @Test func emptyUsageNeverClaimsARecentSuccessfulUpdate() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        #expect(UsageFreshness(snapshots: [], now: now).kind == .unavailable)
+        let missing = ProviderUsageSnapshot(
+            id: .claude,
+            session: UsageWindow(usedPercent: nil, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: nil, resetsAt: nil),
+            observedAt: now,
+            source: .unavailable,
+            message: nil
+        )
+        #expect(UsageFreshness(snapshots: [missing], now: now).kind == .unavailable)
+    }
+
     @Test func freshnessSurfacesTheOldestCachedProvider() {
         let now = Date(timeIntervalSince1970: 2_000)
         let live = snapshot(observedAt: now, source: .live, provider: .claude)
