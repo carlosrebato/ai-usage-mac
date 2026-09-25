@@ -2,6 +2,13 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.4-rc.1 — 2026-09-25
+
+- Show assistants that have never been connected without a warning dot; keep
+  actual connection failures distinct and localize the sign-in prompt.
+- Prepare a signed, provider-specific safety policy for future direct-endpoint
+  incidents. The initial published policy disables neither provider.
+
 ## 0.1.3-beta.3 — 2026-09-24
 
 - Explain the weekly API-equivalent cost on hover using the approved copy,
