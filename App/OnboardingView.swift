@@ -2,6 +2,7 @@ import AIUsageCore
 import AIUsageDesignSystem
 import AIUsageMacServices
 import AIUsageProviderServices
+import AppKit
 import SwiftUI
 
 struct OnboardingView: View {
@@ -44,6 +45,13 @@ struct OnboardingView: View {
             }
         }
         .environment(\.locale, language.locale)
+        .onAppear {
+            if isOnboarding {
+                DispatchQueue.main.async {
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
+        }
         .task {
             launchAtLogin.refresh()
             await store.refresh(force: true, allowInteraction: false)
@@ -90,8 +98,8 @@ struct OnboardingView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SettingsPalette.faint)
                     Text(language.text(
-                        "Granted access is always read-only.",
-                        "El acceso concedido es siempre de solo lectura."
+                        "AI Usage uses these connections only to read usage data.",
+                        "AI Usage usa estas conexiones solo para leer datos de uso."
                     ))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(SettingsPalette.secondary)
@@ -109,10 +117,10 @@ struct OnboardingView: View {
                             .foregroundStyle(SettingsPalette.secondary)
                     }
                     Spacer()
-                    ManagementGhostButton(title: language.text("Not now", "Ahora no")) {
-                        finish()
+                    ManagementGhostButton(title: language.text("Set up later", "Configurar más tarde")) {
+                        dismissWindow(id: "onboarding")
                     }
-                    ManagementPrimaryButton(title: language.text("Get started", "Empezar")) {
+                    ManagementPrimaryButton(title: language.text("View my usage", "Ver mi uso")) {
                         finish()
                     }
                     .disabled(!canStart)
@@ -234,8 +242,8 @@ struct OnboardingView: View {
                         .foregroundStyle(SettingsPalette.faint)
 
                     Text(language.text(
-                        "Granted access is always read-only.",
-                        "El acceso concedido es siempre de solo lectura."
+                        "AI Usage uses these connections only to read usage data.",
+                        "AI Usage usa estas conexiones solo para leer datos de uso."
                     ))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(SettingsPalette.secondary)
@@ -301,9 +309,6 @@ struct OnboardingView: View {
             && !ProviderDataAccess.shared.hasUsableAccess(
                 for: metricsDirectory(for: provider)
             )
-        let actionTitle = needsTokenHistoryAccess
-            ? language.text("Add token history", "Añadir histórico de tokens")
-            : state.actionTitle
 
         return HStack(spacing: 14) {
             ProviderGlyph(provider: provider, size: 18, color: SettingsPalette.glyph)
@@ -349,13 +354,29 @@ struct OnboardingView: View {
                         }
                     }
 
-                    if let actionTitle {
-                        ManagementGhostButton(title: actionTitle) {
-                            if needsTokenHistoryAccess {
+                    if needsTokenHistoryAccess, let actionTitle = state.actionTitle {
+                        Menu {
+                            Button(actionTitle) { performAction(for: provider) }
+                            Button(language.text("Add local history…", "Añadir histórico local…")) {
                                 Task { await connectTokenHistory(provider) }
-                            } else {
-                                performAction(for: provider)
                             }
+                        } label: {
+                            Text(language.text("Options…", "Opciones…"))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(SettingsPalette.buttonText)
+                                .padding(.horizontal, 15)
+                                .frame(height: 31)
+                                .background(Color.white.opacity(0.04), in: Capsule())
+                                .overlay {
+                                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                    } else if let actionTitle = state.actionTitle {
+                        ManagementGhostButton(title: actionTitle) {
+                            performAction(for: provider)
                         }
                     }
                 }
@@ -433,8 +454,8 @@ struct OnboardingView: View {
     private var headerSubtitle: String {
         isOnboarding
             ? language.text(
-                "Check your usage limits from the menu bar. AI Usage processes counters locally and does not analyze, store, or send the content of your conversations.",
-                "Consulta tus límites de uso desde la barra de menú. AI Usage procesa localmente los contadores y no analiza, almacena ni envía el contenido de tus conversaciones."
+                "Choose Claude, Codex, or both. Connect your account to see usage limits; local token history is an optional second step.",
+                "Elige Claude, Codex o ambos. Conecta tu cuenta para ver los límites de uso; el histórico local de tokens es un segundo paso opcional."
             )
             : language.text(
                 "Review or update the local connections AI Usage uses to read your usage counters.",
@@ -710,8 +731,18 @@ struct OnboardingView: View {
     private func beginProviderSignIn(_ provider: UsageProviderID) {
         accessError = nil
         Task { @MainActor in
+            let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
             if await store.connect(provider) {
                 setProviderVisible(true, provider: provider)
+                if !wasConnected {
+                    do {
+                        if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
+                            await store.refreshWhenIdle(force: true, allowInteraction: false)
+                        }
+                    } catch {
+                        accessError = error.localizedDescription
+                    }
+                }
             }
         }
     }

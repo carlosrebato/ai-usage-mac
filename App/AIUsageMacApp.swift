@@ -291,6 +291,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 settings: { [weak self] in self?.showSettings() }
             )
             .environmentObject(store)
+            .environmentObject(assistantSetupContext)
             .environmentObject(providerSelection)
         )
         hostingController.view.appearance = darkAppearance
@@ -300,7 +301,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private func observeChanges() {
         store.$providerStates
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
+            .sink { [weak self] states in
+                self?.providerSelection.recoverConnectedProvidersIfNeeded(states)
+                self?.updateStatusItem(providerStates: states)
+            }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
@@ -313,7 +317,9 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
         providerSelection.$activeProviders
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
+            .sink { [weak self] providers in
+                self?.updateStatusItem(activeProviders: providers)
+            }
             .store(in: &cancellables)
 
         minuteTimer = Timer.publish(every: 60, on: .main, in: .common)
@@ -532,7 +538,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         panel.orderFrontRegardless()
     }
 
-    private func updateStatusItem() {
+    private func updateStatusItem(
+        providerStates: [ProviderRuntimeState]? = nil,
+        activeProviders: Set<UsageProviderID>? = nil
+    ) {
         guard let button = statusItem.button else { return }
         let language = AppLanguage.current
         let showPercentage = UserDefaults.standard.object(
@@ -541,13 +550,15 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let showResetTimes = UserDefaults.standard.bool(
             forKey: AppPreferenceKey.showResetTimesInMenuBar
         )
+        let visibleProviders = activeProviders ?? providerSelection.activeProviders
+        let currentSnapshots = (providerStates ?? store.providerStates).map(\.snapshot)
         let snapshots = UsageProviderID.allCases
-            .filter(providerSelection.isActive)
+            .filter(visibleProviders.contains)
             .compactMap { provider in
-            store.snapshots.first {
-                $0.id == provider
-                    && $0.menuBarPercent != nil
-            }
+                currentSnapshots.first {
+                    $0.id == provider
+                        && $0.menuBarPercent != nil
+                }
             }
 
         guard showPercentage, !snapshots.isEmpty else {
@@ -555,10 +566,25 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 ?? NSApplication.shared.applicationIconImage)?.copy() as? NSImage
             image?.size = NSSize(width: 18, height: 18)
             image?.isTemplate = false
+            button.title = ""
+            button.imagePosition = .imageOnly
             button.image = image
-            button.toolTip = snapshots.isEmpty
-                ? language.text("AI Usage has no data", "AI Usage sin datos")
-                : "AI Usage"
+            if !showPercentage {
+                button.toolTip = language.text(
+                    "AI Usage · Menu bar percentages are turned off",
+                    "AI Usage · Los porcentajes de la barra de menú están desactivados"
+                )
+            } else if visibleProviders.isEmpty {
+                button.toolTip = language.text(
+                    "AI Usage · No assistant is shown. Choose Show in Manage.",
+                    "AI Usage · No hay asistentes visibles. Pulsa Mostrar en Gestionar."
+                )
+            } else {
+                button.toolTip = language.text(
+                    "AI Usage · Waiting for usage percentages",
+                    "AI Usage · Esperando los porcentajes de uso"
+                )
+            }
             statusItem.length = NSStatusItem.squareLength
             return
         }
@@ -575,8 +601,27 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             )
         )
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return }
+        guard let image = renderer.nsImage else {
+            // A failed SwiftUI offscreen render must not leave the launch icon
+            // in place when usable percentages are already available.
+            button.image = nil
+            button.imagePosition = .noImage
+            button.title = snapshots.compactMap { snapshot in
+                snapshot.menuBarPercent.map {
+                    "\(snapshot.id == .claude ? "C" : "X") \(Int($0.rounded()))%"
+                }
+            }.joined(separator: "  ")
+            button.toolTip = accessibilityText(
+                snapshots: snapshots,
+                language: language,
+                showResetTimes: showResetTimes
+            )
+            statusItem.length = NSStatusItem.variableLength
+            return
+        }
         image.isTemplate = false
+        button.title = ""
+        button.imagePosition = .imageOnly
         button.image = image
         button.toolTip = accessibilityText(
             snapshots: snapshots,

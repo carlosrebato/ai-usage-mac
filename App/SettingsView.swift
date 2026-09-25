@@ -212,6 +212,18 @@ struct SettingsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
 
+                if presentation.isConnected && !providerSelection.isActive(provider) {
+                    Button(language.text(
+                        "Hidden from the menu bar · Show",
+                        "Oculto de la barra de menú · Mostrar"
+                    )) {
+                        providerSelection.setActive(true, for: provider)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(UsageTheme.cached)
+                }
+
                 if !presentation.isConnected {
                     HStack(spacing: 5) {
                         if presentation.isBusy {
@@ -246,13 +258,18 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SettingsPalette.accent)
                         .padding(.top, 5)
+
+                        Text(tokenHistoryExplanation(for: provider))
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
                 if let tokenHistoryError = tokenHistoryErrors[provider] {
                     Text(tokenHistoryError)
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(UsageTheme.red)
+                        .foregroundStyle(UsageTheme.cached)
                         .lineLimit(2)
                         .padding(.top, 2)
                 }
@@ -283,13 +300,36 @@ struct SettingsView: View {
     }
 
     private func beginProviderSignIn(_ provider: UsageProviderID) {
+        tokenHistoryErrors[provider] = nil
         Task { @MainActor in
-            _ = await store.connect(provider)
+            let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
+            if await store.connect(provider), !wasConnected {
+                providerSelection.setActive(true, for: provider)
+                UserDefaults.standard.set(true, forKey: AppPreferenceKey.onboardingCompleted)
+                do {
+                    if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
+                        await store.refreshWhenIdle(force: true, allowInteraction: false)
+                    }
+                } catch {
+                    tokenHistoryErrors[provider] = language.text(
+                        "Optional local history was not added: \(error.localizedDescription)",
+                        "No se añadió el histórico local opcional: \(error.localizedDescription)"
+                    )
+                }
+            }
         }
     }
 
     private func needsTokenHistoryAccess(_ provider: UsageProviderID) -> Bool {
         !ProviderDataAccess.shared.hasUsableAccess(for: metricsDirectory(for: provider))
+    }
+
+    private func tokenHistoryExplanation(for provider: UsageProviderID) -> String {
+        let tool = provider == .claude ? "Claude Code" : "Codex CLI"
+        return language.text(
+            "Optional · reads \(tool) files on this Mac for token history and estimated cost. Live limits work without it.",
+            "Opcional · lee los archivos de \(tool) de este Mac para el histórico de tokens y el coste estimado. Los límites funcionan sin ello."
+        )
     }
 
     @MainActor

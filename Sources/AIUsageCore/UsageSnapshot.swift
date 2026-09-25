@@ -38,6 +38,7 @@ public struct UsageFreshness: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
         case live
         case cached
+        case unavailable
     }
 
     public let kind: Kind
@@ -46,6 +47,11 @@ public struct UsageFreshness: Equatable, Sendable {
     public init(snapshots: [ProviderUsageSnapshot], now: Date) {
         let available = snapshots.filter {
             $0.highestPercent != nil && $0.source != .unavailable
+        }
+        guard !available.isEmpty else {
+            kind = .unavailable
+            date = now
+            return
         }
         let cached = available.filter { $0.source == .cached || $0.isStale(at: now) }
         let relevant = cached.isEmpty ? available : cached

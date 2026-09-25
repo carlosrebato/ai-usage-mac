@@ -47,6 +47,58 @@ struct UsageSnapshotTests {
         #expect(!ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
     }
 
+    @Test func connectedAssistantsHiddenByOlderSettingsFlowAreRecoveredOnce() {
+        let suite = "ProviderVisibility.recovery.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        ProviderVisibilityPreferences.migrateIfNeeded(
+            onboardingCompleted: false,
+            in: defaults
+        )
+
+        #expect(ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: false,
+            connectedProviders: [.claude],
+            in: defaults
+        ).isEmpty)
+        #expect(ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: true,
+            connectedProviders: [],
+            in: defaults
+        ).isEmpty)
+
+        let recovered = ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: true,
+            connectedProviders: [.claude, .codex],
+            in: defaults
+        )
+        #expect(recovered == Set([.claude, .codex]))
+        #expect(ProviderVisibilityPreferences.isVisible(.claude, in: defaults))
+        #expect(ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
+
+        ProviderVisibilityPreferences.setVisible(false, for: .claude, in: defaults)
+        #expect(ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: true,
+            connectedProviders: [.claude],
+            in: defaults
+        ).isEmpty)
+        #expect(!ProviderVisibilityPreferences.isVisible(.claude, in: defaults))
+    }
+
+    @Test func recoveryDoesNotOverrideAnExistingVisibleAssistant() {
+        let suite = "ProviderVisibility.existingChoice.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        ProviderVisibilityPreferences.setVisible(true, for: .claude, in: defaults)
+
+        #expect(ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: true,
+            connectedProviders: [.claude, .codex],
+            in: defaults
+        ).isEmpty)
+        #expect(!ProviderVisibilityPreferences.isVisible(.codex, in: defaults))
+    }
+
     @Test func severityThresholdsMatchTheExistingDesign() {
         #expect(UsageSeverity.forPercent(nil) == .unavailable)
         #expect(UsageSeverity.forPercent(69) == .normal)
@@ -109,6 +161,20 @@ struct UsageSnapshotTests {
 
         #expect(freshness.kind == .live)
         #expect(freshness.date == now)
+    }
+
+    @Test func emptyUsageNeverClaimsARecentSuccessfulUpdate() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        #expect(UsageFreshness(snapshots: [], now: now).kind == .unavailable)
+        let missing = ProviderUsageSnapshot(
+            id: .claude,
+            session: UsageWindow(usedPercent: nil, resetsAt: nil),
+            weekly: UsageWindow(usedPercent: nil, resetsAt: nil),
+            observedAt: now,
+            source: .unavailable,
+            message: nil
+        )
+        #expect(UsageFreshness(snapshots: [missing], now: now).kind == .unavailable)
     }
 
     @Test func freshnessSurfacesTheOldestCachedProvider() {

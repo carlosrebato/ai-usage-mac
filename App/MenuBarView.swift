@@ -9,6 +9,7 @@ struct MenuBarView: View {
     static let preferredWidth: CGFloat = 448
 
     @EnvironmentObject private var store: UsageStore
+    @EnvironmentObject private var assistantSetupContext: AssistantSetupContext
     @EnvironmentObject private var providerSelection: ProviderSelectionStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
@@ -34,7 +35,10 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if isExpanded {
+            if !providerSelection.hasActiveProvider {
+                setupPrompt
+                    .padding(20)
+            } else if isExpanded {
                 expandedHeader
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
@@ -97,6 +101,41 @@ struct MenuBarView: View {
                 )
             }
         }
+    }
+
+    private var setupPrompt: some View {
+        let hasConnectedAssistant = store.connectionStatuses.contains(where: \.isConnected)
+        return VStack(alignment: .leading, spacing: 11) {
+            Text(hasConnectedAssistant
+                ? language.text("No assistants shown", "No hay asistentes visibles")
+                : language.text("Connect an AI assistant", "Conecta un asistente de IA"))
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(UsageTheme.primaryText)
+
+            Text(hasConnectedAssistant
+                ? language.text(
+                    "Show Claude or Codex to see its limits here and in the menu bar.",
+                    "Muestra Claude o Codex para ver sus límites aquí y en la barra de menú."
+                )
+                : language.text(
+                    "Connect Claude or Codex to see your usage limits here and in the menu bar.",
+                    "Conecta Claude o Codex para ver tus límites de uso aquí y en la barra de menú."
+                ))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(UsageTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button(hasConnectedAssistant
+                ? language.text("Manage assistants", "Gestionar asistentes")
+                : language.text("Connect Claude or Codex", "Conectar Claude o Codex")) {
+                assistantSetupContext.mode = hasConnectedAssistant ? .management : .onboarding
+                dismiss()
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: hasConnectedAssistant ? "assistant-management" : "onboarding")
+            }
+            .buttonStyle(UsagePillButtonStyle())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var visibleSnapshots: [ProviderUsageSnapshot] {

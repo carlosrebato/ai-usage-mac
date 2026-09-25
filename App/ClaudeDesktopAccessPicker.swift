@@ -5,24 +5,31 @@ import Foundation
 
 @MainActor
 enum ProviderDataAccessPicker {
-    static func requestAccess(for provider: UsageProviderID) async throws -> Bool {
+    static func requestAccess(
+        for provider: UsageProviderID,
+        duringInitialConnection: Bool = false
+    ) async throws -> Bool {
         let dataDirectory: ProviderDataDirectory = provider == .claude ? .claudeCode : .codex
         let providerName = provider == .claude ? "Claude" : "Codex"
+        let localToolName = provider == .claude ? "Claude Code" : "Codex CLI"
         let folderName = provider == .claude ? ".claude" : ".codex"
         let language = AppLanguage.current
         let panel = NSOpenPanel()
-        panel.title = language.text(
-            "Add \(providerName) token history",
-            "Añadir histórico de tokens de \(providerName)"
-        )
-        panel.message = language.text(
-            provider == .claude
-                ? "Select your .claude folder. AI Usage will only read numeric usage counters for local history and cost estimates."
-                : "Select your .codex folder. AI Usage will only read numeric usage counters for local history and cost estimates.",
-            provider == .claude
-                ? "Selecciona tu carpeta .claude. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
-                : "Selecciona tu carpeta .codex. AI Usage solo leerá contadores numéricos para histórico y estimaciones de coste."
-        )
+        panel.title = duringInitialConnection
+            ? language.text("Optional local history", "Histórico local opcional")
+            : language.text(
+                "Add \(providerName) token history",
+                "Añadir histórico de tokens de \(providerName)"
+            )
+        panel.message = duringInitialConnection
+            ? language.text(
+                "\(providerName) is connected. Optional: select \(folderName) to add \(localToolName) token history and estimated cost. AI Usage scans local session files, which may contain conversation text, but does not store or send that text. Cancel to skip; live limits still work.",
+                "\(providerName) está conectado. Opcional: selecciona \(folderName) para añadir el histórico de tokens y el coste estimado de \(localToolName). AI Usage examina archivos locales de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto. Pulsa Cancelar para omitirlo; los límites seguirán funcionando."
+            )
+            : language.text(
+                "Select \(folderName) to add local token history and estimated cost. AI Usage scans session files, which may contain conversation text, but does not store or send that text.",
+                "Selecciona \(folderName) para añadir el histórico local de tokens y el coste estimado. AI Usage examina archivos de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto."
+            )
         panel.prompt = language.text("Use \(folderName)", "Usar \(folderName)")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -50,7 +57,27 @@ enum ProviderDataAccessPicker {
         }
         guard response == .OK, let folder = panel.url else { return false }
         try ProviderDataAccess.shared.saveAccess(to: folder, for: dataDirectory)
+        UserDefaults.standard.set(false, forKey: skippedHistoryKey(for: provider))
         return true
+    }
+
+    static func offerAccessDuringInitialConnection(for provider: UsageProviderID) async throws -> Bool {
+        let directory: ProviderDataDirectory = provider == .claude ? .claudeCode : .codex
+        guard !ProviderDataAccess.shared.hasUsableAccess(for: directory),
+              !UserDefaults.standard.bool(forKey: skippedHistoryKey(for: provider)) else {
+            return false
+        }
+        let granted = try await requestAccess(for: provider, duringInitialConnection: true)
+        if !granted {
+            UserDefaults.standard.set(true, forKey: skippedHistoryKey(for: provider))
+        }
+        return granted
+    }
+
+    private static func skippedHistoryKey(for provider: UsageProviderID) -> String {
+        provider == .claude
+            ? AppPreferenceKey.skippedClaudeTokenHistory
+            : AppPreferenceKey.skippedCodexTokenHistory
     }
 }
 

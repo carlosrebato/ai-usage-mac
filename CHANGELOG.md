@@ -2,6 +2,26 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.4-rc.3 — 2026-09-25
+
+- Offer optional local token-history access as part of the first provider
+  connection, while keeping live limits connected if the folder is skipped.
+- Keep the optional local-history action available after a user skips it,
+  explaining that it reads local CLI files for tokens and estimated cost without
+  affecting live limits.
+- Explain when connected assistants are hidden from the menu bar. If an
+  offscreen icon render fails, show the available percentages as text instead
+  of leaving the launch icon in place.
+- Bring the first-run assistant setup to the foreground, keep it pending when
+  deferred, and offer a direct setup action from an empty menu-bar panel.
+- Clarify the optional local-history consent: session files can contain
+  conversation text, but the app retains only usage metadata and does not send
+  the text.
+- Show a provider immediately after a successful connection from Settings.
+  Recover older installations where connected providers were accidentally
+  left hidden, which produced an empty panel and no menu-bar percentages.
+- Do not label an empty panel as freshly updated with a green checkmark.
+
 ## 0.1.4-rc.2 — 2026-09-25
 
 - Keep automatic updates on the stable channel by default, with an explicit
