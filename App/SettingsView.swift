@@ -304,6 +304,8 @@ struct SettingsView: View {
         Task { @MainActor in
             let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
             if await store.connect(provider), !wasConnected {
+                providerSelection.setActive(true, for: provider)
+                UserDefaults.standard.set(true, forKey: AppPreferenceKey.onboardingCompleted)
                 do {
                     if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
                         await store.refreshWhenIdle(force: true, allowInteraction: false)

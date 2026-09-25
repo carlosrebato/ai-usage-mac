@@ -1,4 +1,5 @@
 import AIUsageCore
+import AIUsageMacServices
 import Combine
 import WidgetKit
 
@@ -40,6 +41,18 @@ final class ProviderSelectionStore: ObservableObject {
             activeProviders.remove(provider)
         }
         ProviderVisibilityPreferences.setVisible(active, for: provider)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func recoverConnectedProvidersIfNeeded(_ states: [ProviderRuntimeState]) {
+        let recovered = ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: UserDefaults.standard.bool(forKey: AppPreferenceKey.onboardingCompleted),
+            connectedProviders: Set(states.compactMap { state in
+                state.connection?.isConnected == true ? state.id : nil
+            })
+        )
+        guard !recovered.isEmpty else { return }
+        activeProviders.formUnion(recovered)
         WidgetCenter.shared.reloadAllTimelines()
     }
 

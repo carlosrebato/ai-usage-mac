@@ -17,6 +17,9 @@ All notable changes to AI Usage for Mac are documented here.
 - Clarify the optional local-history consent: session files can contain
   conversation text, but the app retains only usage metadata and does not send
   the text.
+- Show a provider immediately after a successful connection from Settings.
+  Recover older installations where connected providers were accidentally
+  left hidden, which produced an empty panel and no menu-bar percentages.
 
 ## 0.1.4-rc.2 — 2026-09-25
 

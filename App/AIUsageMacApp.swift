@@ -302,6 +302,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         store.$providerStates
             .receive(on: RunLoop.main)
             .sink { [weak self] states in
+                self?.providerSelection.recoverConnectedProvidersIfNeeded(states)
                 self?.updateStatusItem(providerStates: states)
             }
             .store(in: &cancellables)
