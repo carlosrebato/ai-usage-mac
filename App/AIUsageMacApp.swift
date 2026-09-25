@@ -291,6 +291,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 settings: { [weak self] in self?.showSettings() }
             )
             .environmentObject(store)
+            .environmentObject(assistantSetupContext)
             .environmentObject(providerSelection)
         )
         hostingController.view.appearance = darkAppearance

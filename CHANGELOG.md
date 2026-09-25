@@ -12,6 +12,11 @@ All notable changes to AI Usage for Mac are documented here.
 - Explain when connected assistants are hidden from the menu bar. If an
   offscreen icon render fails, show the available percentages as text instead
   of leaving the launch icon in place.
+- Bring the first-run assistant setup to the foreground, keep it pending when
+  deferred, and offer a direct setup action from an empty menu-bar panel.
+- Clarify the optional local-history consent: session files can contain
+  conversation text, but the app retains only usage metadata and does not send
+  the text.
 
 ## 0.1.4-rc.2 — 2026-09-25
 
