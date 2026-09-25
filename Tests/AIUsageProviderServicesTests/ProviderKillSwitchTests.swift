@@ -5,16 +5,21 @@ import AIUsageCore
 @testable import AIUsageProviderServices
 
 private final class PolicyURLProtocol: URLProtocol {
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var responses: [URL: Data] = [:]
-
-    static func register(_ data: Data, for url: URL) {
-        lock.lock()
-        defer { lock.unlock() }
-        responses[url] = data
+    private struct Stub {
+        let data: Data
+        let delay: TimeInterval
     }
 
-    private static func response(for url: URL) -> Data? {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var responses: [URL: Stub] = [:]
+
+    static func register(_ data: Data, for url: URL, delay: TimeInterval = 0) {
+        lock.lock()
+        defer { lock.unlock() }
+        responses[url] = Stub(data: data, delay: delay)
+    }
+
+    private static func response(for url: URL) -> Stub? {
         lock.lock()
         defer { lock.unlock() }
         return responses[url]
@@ -24,15 +29,16 @@ private final class PolicyURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        guard let url = request.url, let data = Self.response(for: url) else {
+        guard let url = request.url, let stub = Self.response(for: url) else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
+        if stub.delay > 0 { Thread.sleep(forTimeInterval: stub.delay) }
         let response = HTTPURLResponse(
             url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocol(self, didLoad: stub.data)
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -177,5 +183,38 @@ struct ProviderKillSwitchTests {
 
         try await switcher.check(.codex)
         #expect(await switcher.currentNotice() == nil)
+    }
+
+    @Test func concurrentChecksWaitForTheSameInitialPolicy() async throws {
+        let key = P256.Signing.PrivateKey()
+        let now = Date(timeIntervalSince1970: 900)
+        let policy = ProviderKillSwitch.Policy(
+            schemaVersion: 1,
+            disabledProviders: [.claude, .codex],
+            minimumVersion: nil,
+            notice: "Both paused",
+            issuedAt: Date(timeIntervalSince1970: 800),
+            expiresAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let payload = try JSONEncoder().encode(policy)
+        let signature = try key.signature(for: payload).derRepresentation
+        let url = URL(string: "https://example.com/remote-policy-\(UUID().uuidString).json")!
+        PolicyURLProtocol.register(try JSONSerialization.data(withJSONObject: [
+            "payload": payload.base64EncodedString(),
+            "signature": signature.base64EncodedString()
+        ]), for: url, delay: 0.2)
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.protocolClasses = [PolicyURLProtocol.self]
+        let switcher = ProviderKillSwitch(
+            session: URLSession(configuration: sessionConfiguration),
+            defaults: UserDefaults(suiteName: UUID().uuidString)!,
+            now: { now },
+            configuration: .init(url: url, publicKey: key.publicKey)
+        )
+
+        let claude = Task { try await switcher.check(.claude) }
+        let codex = Task { try await switcher.check(.codex) }
+        await #expect(throws: ProviderPolicyError.self) { try await claude.value }
+        await #expect(throws: ProviderPolicyError.self) { try await codex.value }
     }
 }
