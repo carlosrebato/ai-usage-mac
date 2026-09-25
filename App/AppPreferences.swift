@@ -57,5 +57,7 @@ enum AppPreferenceKey {
     static let showResetTimesInMenuBar = "showResetTimesInMenuBar"
     static let menuBarExpanded = "menuBarExpanded"
     static let onboardingCompleted = "onboardingCompleted"
+    static let skippedClaudeTokenHistory = "skippedClaudeTokenHistory"
+    static let skippedCodexTokenHistory = "skippedCodexTokenHistory"
     static let language = AppLanguage.preferenceKey
 }

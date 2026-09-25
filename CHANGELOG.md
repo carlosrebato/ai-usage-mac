@@ -2,6 +2,13 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
+## 0.1.4-rc.3 — 2026-09-25
+
+- Offer optional local token-history access as part of the first provider
+  connection, while keeping live limits connected if the folder is skipped.
+- Keep optional history out of the connected assistant cards in Settings;
+  it remains available from Manage.
+
 ## 0.1.4-rc.2 — 2026-09-25
 
 - Keep automatic updates on the stable channel by default, with an explicit

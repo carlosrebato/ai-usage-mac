@@ -30,6 +30,8 @@ struct OnboardingView: View {
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
     @AppStorage(AppPreferenceKey.onboardingCompleted) private var onboardingCompleted = false
+    @AppStorage(AppPreferenceKey.skippedClaudeTokenHistory) private var skippedClaudeTokenHistory = false
+    @AppStorage(AppPreferenceKey.skippedCodexTokenHistory) private var skippedCodexTokenHistory = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
     @StateObject private var launchAtLogin = LaunchAtLoginController()
     @State private var busyProvider: UsageProviderID?
@@ -301,9 +303,7 @@ struct OnboardingView: View {
             && !ProviderDataAccess.shared.hasUsableAccess(
                 for: metricsDirectory(for: provider)
             )
-        let actionTitle = needsTokenHistoryAccess
-            ? language.text("Add token history", "Añadir histórico de tokens")
-            : state.actionTitle
+            && (!isOnboarding || !skippedTokenHistory(for: provider))
 
         return HStack(spacing: 14) {
             ProviderGlyph(provider: provider, size: 18, color: SettingsPalette.glyph)
@@ -349,13 +349,29 @@ struct OnboardingView: View {
                         }
                     }
 
-                    if let actionTitle {
-                        ManagementGhostButton(title: actionTitle) {
-                            if needsTokenHistoryAccess {
+                    if needsTokenHistoryAccess, let actionTitle = state.actionTitle {
+                        Menu {
+                            Button(actionTitle) { performAction(for: provider) }
+                            Button(language.text("Add local history…", "Añadir histórico local…")) {
                                 Task { await connectTokenHistory(provider) }
-                            } else {
-                                performAction(for: provider)
                             }
+                        } label: {
+                            Text(language.text("Options…", "Opciones…"))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(SettingsPalette.buttonText)
+                                .padding(.horizontal, 15)
+                                .frame(height: 31)
+                                .background(Color.white.opacity(0.04), in: Capsule())
+                                .overlay {
+                                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                    } else if let actionTitle = state.actionTitle {
+                        ManagementGhostButton(title: actionTitle) {
+                            performAction(for: provider)
                         }
                     }
                 }
@@ -710,10 +726,24 @@ struct OnboardingView: View {
     private func beginProviderSignIn(_ provider: UsageProviderID) {
         accessError = nil
         Task { @MainActor in
+            let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
             if await store.connect(provider) {
                 setProviderVisible(true, provider: provider)
+                if !wasConnected {
+                    do {
+                        if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
+                            await store.refreshWhenIdle(force: true, allowInteraction: false)
+                        }
+                    } catch {
+                        accessError = error.localizedDescription
+                    }
+                }
             }
         }
+    }
+
+    private func skippedTokenHistory(for provider: UsageProviderID) -> Bool {
+        provider == .claude ? skippedClaudeTokenHistory : skippedCodexTokenHistory
     }
 
     private func connect(_ provider: UsageProviderID) async {

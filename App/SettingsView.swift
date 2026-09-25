@@ -26,7 +26,6 @@ struct SettingsView: View {
     @AppStorage(AppPreferenceKey.showResetTimesInMenuBar) private var showResetTimes = false
     @AppStorage(AppPreferenceKey.language) private var language: AppLanguage = .english
     @StateObject private var launchAtLogin = LaunchAtLoginController()
-    @State private var tokenHistoryProvider: UsageProviderID?
     @State private var tokenHistoryErrors: [UsageProviderID: String] = [:]
     @State private var diagnosticExportError: String?
 
@@ -229,30 +228,10 @@ struct SettingsView: View {
                     .padding(.top, 4)
                 }
 
-                if presentation.isConnected && needsTokenHistoryAccess(provider) {
-                    if tokenHistoryProvider == provider {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(SettingsPalette.accent)
-                            .padding(.top, 5)
-                    } else {
-                        Button(language.text(
-                            "Add token history",
-                            "Añadir histórico de tokens"
-                        )) {
-                            Task { await addTokenHistory(for: provider) }
-                        }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(SettingsPalette.accent)
-                        .padding(.top, 5)
-                    }
-                }
-
                 if let tokenHistoryError = tokenHistoryErrors[provider] {
                     Text(tokenHistoryError)
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(UsageTheme.red)
+                        .foregroundStyle(UsageTheme.cached)
                         .lineLimit(2)
                         .padding(.top, 2)
                 }
@@ -283,30 +262,22 @@ struct SettingsView: View {
     }
 
     private func beginProviderSignIn(_ provider: UsageProviderID) {
-        Task { @MainActor in
-            _ = await store.connect(provider)
-        }
-    }
-
-    private func needsTokenHistoryAccess(_ provider: UsageProviderID) -> Bool {
-        !ProviderDataAccess.shared.hasUsableAccess(for: metricsDirectory(for: provider))
-    }
-
-    @MainActor
-    private func addTokenHistory(for provider: UsageProviderID) async {
         tokenHistoryErrors[provider] = nil
-        tokenHistoryProvider = provider
-        defer { tokenHistoryProvider = nil }
-        do {
-            guard try await ProviderDataAccessPicker.requestAccess(for: provider) else { return }
-            await store.refreshWhenIdle(force: true, allowInteraction: false)
-        } catch {
-            tokenHistoryErrors[provider] = error.localizedDescription
+        Task { @MainActor in
+            let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
+            if await store.connect(provider), !wasConnected {
+                do {
+                    if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
+                        await store.refreshWhenIdle(force: true, allowInteraction: false)
+                    }
+                } catch {
+                    tokenHistoryErrors[provider] = language.text(
+                        "Optional local history was not added: \(error.localizedDescription)",
+                        "No se añadió el histórico local opcional: \(error.localizedDescription)"
+                    )
+                }
+            }
         }
-    }
-
-    private func metricsDirectory(for provider: UsageProviderID) -> ProviderDataDirectory {
-        provider == .claude ? .claudeCode : .codex
     }
 
     private var launchSection: some View {
