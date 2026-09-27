@@ -87,8 +87,7 @@ struct SettingsView: View {
 
                 launchSection
                 privacyCallout
-                diagnosticExport
-                supportLinks
+                supportActions
                 footer
             }
             .padding(.top, 26)
@@ -413,13 +412,24 @@ struct SettingsView: View {
         .padding(.horizontal, 3)
     }
 
-    private var diagnosticExport: some View {
+    private var supportActions: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SettingsLinkButton(title: language.text(
-                "Export diagnostics…",
-                "Exportar diagnóstico…"
-            )) {
-                exportDiagnostics()
+            HStack(spacing: 16) {
+                SettingsLinkButton(title: language.text(
+                    "Export diagnostics…",
+                    "Exportar diagnóstico…"
+                )) {
+                    exportDiagnostics()
+                }
+                SettingsLinkButton(title: language.text("Help", "Ayuda")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac#readme")
+                }
+                SettingsLinkButton(title: language.text("Privacy", "Privacidad")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac/blob/main/PRIVACY.md")
+                }
+                SettingsLinkButton(title: language.text("Report an issue", "Informar de un problema")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac/issues/new/choose")
+                }
             }
             if let diagnosticExportError {
                 Text(diagnosticExportError)
@@ -441,20 +451,6 @@ struct SettingsView: View {
             try data.write(to: url, options: .atomic)
         } catch {
             diagnosticExportError = error.localizedDescription
-        }
-    }
-
-    private var supportLinks: some View {
-        HStack(spacing: 16) {
-            SettingsLinkButton(title: language.text("Help", "Ayuda")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac#readme")
-            }
-            SettingsLinkButton(title: language.text("Privacy", "Privacidad")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/blob/main/PRIVACY.md")
-            }
-            SettingsLinkButton(title: language.text("Report an issue", "Informar de un problema")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/issues/new/choose")
-            }
         }
     }
 
@@ -798,6 +794,8 @@ private struct SettingsLinkButton: View {
     var body: some View {
         Button(title, action: action)
             .buttonStyle(.plain)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(.system(size: 11.5, weight: .semibold))
             .foregroundStyle(isHovering ? Color(red: 106 / 255, green: 223 / 255, blue: 169 / 255) : SettingsPalette.accent)
             .onHover { isHovering = $0 }

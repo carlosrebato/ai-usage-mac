@@ -23,6 +23,7 @@ All notable changes to AI Usage for Mac are documented here.
 - Do not label an empty panel as freshly updated with a green checkmark.
 - Keep the assistant visibility button on one line in the management window,
   including when reconnect controls are beside it.
+- Put diagnostics, help, privacy and issue-report links on one line in Settings.
 
 ## 0.1.4-rc.2 — 2026-09-25
 
