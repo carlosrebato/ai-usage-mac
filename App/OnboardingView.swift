@@ -899,7 +899,10 @@ private struct ManagementVisibilityButton: View {
                 Text(isVisible
                     ? language.text("Shown", "Visible")
                     : language.text("Show", "Mostrar"))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.plain)
         .font(.system(size: 11.5, weight: .semibold))
@@ -914,7 +917,9 @@ private struct ManagementVisibilityButton: View {
             )
         }
         .onHover { isHovering = $0 }
-        .accessibilityLabel(language.text("Show assistant", "Mostrar asistente"))
+        .accessibilityLabel(isVisible
+            ? language.text("Hide assistant", "Ocultar asistente")
+            : language.text("Show assistant", "Mostrar asistente"))
         .accessibilityValue(isVisible ? language.text("On", "Sí") : language.text("Off", "No"))
     }
 }

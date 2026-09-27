@@ -21,6 +21,8 @@ All notable changes to AI Usage for Mac are documented here.
   Recover older installations where connected providers were accidentally
   left hidden, which produced an empty panel and no menu-bar percentages.
 - Do not label an empty panel as freshly updated with a green checkmark.
+- Keep the assistant visibility button on one line in the management window,
+  including when reconnect controls are beside it.
 
 ## 0.1.4-rc.2 — 2026-09-25
 
