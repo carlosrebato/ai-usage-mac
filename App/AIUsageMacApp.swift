@@ -500,7 +500,8 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
     private func showFloatingWindow() {
         popover.performClose(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Detaching the HUD must not reactivate an already-open Settings window.
+        settingsWindow?.orderOut(nil)
 
         if let floatingWindow {
             presentFloatingWindow(floatingWindow)
@@ -509,7 +510,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
         let panel = AIUsageFloatingPanel(
             contentRect: NSRect(origin: .zero, size: FloatingPanelView.size),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -534,7 +535,6 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func presentFloatingWindow(_ panel: NSPanel) {
-        panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
     }
 
