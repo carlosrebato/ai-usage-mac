@@ -8,6 +8,11 @@ import UniformTypeIdentifiers
 import WidgetKit
 
 struct SettingsView: View {
+    static func preferredWindowHeight(for screen: NSScreen?) -> CGFloat {
+        let visibleHeight = screen?.visibleFrame.height ?? 800
+        return min(760, max(380, visibleHeight - 64))
+    }
+
     private struct ProviderPresentation {
         let detail: String
         let badge: String
@@ -31,72 +36,83 @@ struct SettingsView: View {
     @State private var diagnosticExportError: String?
     @State private var diagnosticExportDocument: DiagnosticExportDocument?
     @State private var isExportingDiagnostics = false
+    private let windowHeight: CGFloat
+
+    init(windowHeight: CGFloat? = nil) {
+        self.windowHeight = windowHeight ?? Self.preferredWindowHeight(for: NSScreen.main)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             titleBar
 
-            VStack(alignment: .leading, spacing: 24) {
-                header
-                assistantsSection
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    assistantsSection
 
-                settingsSection(language.text("General", "General")) {
-                    preferenceRow(
-                        systemName: "arrow.triangle.2.circlepath",
-                        title: language.text("Automatic refresh", "Actualizar automáticamente"),
-                        subtitle: language.text(
-                            "Keeps your limits current in the background",
-                            "Mantiene los límites al día en segundo plano"
-                        ),
-                        isOn: $automaticRefresh
-                    )
+                    settingsSection(language.text("General", "General")) {
+                        preferenceRow(
+                            systemName: "arrow.triangle.2.circlepath",
+                            title: language.text("Automatic refresh", "Actualizar automáticamente"),
+                            subtitle: language.text(
+                                "Keeps your limits current in the background",
+                                "Mantiene los límites al día en segundo plano"
+                            ),
+                            isOn: $automaticRefresh
+                        )
 
-                    settingsDivider
+                        settingsDivider
 
-                    preferenceRow(
-                        systemName: "menubar.rectangle",
-                        title: language.text(
-                            "Percentage in the menu bar",
-                            "Porcentaje en la barra de menú"
-                        ),
-                        subtitle: language.text(
-                            "Shows usage without opening the app",
-                            "Muestra el uso sin abrir la aplicación"
-                        ),
-                        isOn: $showPercentage
-                    )
+                        preferenceRow(
+                            systemName: "menubar.rectangle",
+                            title: language.text(
+                                "Percentage in the menu bar",
+                                "Porcentaje en la barra de menú"
+                            ),
+                            subtitle: language.text(
+                                "Shows usage without opening the app",
+                                "Muestra el uso sin abrir la aplicación"
+                            ),
+                            isOn: $showPercentage
+                        )
 
-                    settingsDivider
+                        settingsDivider
 
-                    preferenceRow(
-                        systemName: "timer",
-                        title: language.text(
-                            "Reset times in the menu bar",
-                            "Tiempos de reseteo en la barra de menú"
-                        ),
-                        subtitle: language.text(
-                            "Shows the countdown next to each percentage",
-                            "Muestra la cuenta atrás junto a cada porcentaje"
-                        ),
-                        isOn: $showResetTimes
-                    )
-                    .disabled(!showPercentage)
-                    .opacity(showPercentage ? 1 : 0.52)
+                        preferenceRow(
+                            systemName: "timer",
+                            title: language.text(
+                                "Reset times in the menu bar",
+                                "Tiempos de reseteo en la barra de menú"
+                            ),
+                            subtitle: language.text(
+                                "Shows the countdown next to each percentage",
+                                "Muestra la cuenta atrás junto a cada porcentaje"
+                            ),
+                            isOn: $showResetTimes
+                        )
+                        .disabled(!showPercentage)
+                        .opacity(showPercentage ? 1 : 0.52)
 
-                    settingsDivider
-                    languageRow
+                        settingsDivider
+                        languageRow
+                    }
+
+                    launchSection
+                    privacyCallout
+                    supportActions
                 }
-
-                launchSection
-                privacyCallout
-                supportActions
-                footer
+                .padding(.top, 26)
+                .padding(.horizontal, 28)
+                .padding(.bottom, 20)
             }
-            .padding(.top, 26)
-            .padding(.horizontal, 28)
-            .padding(.bottom, 22)
+            .scrollIndicators(.visible)
+
+            footer
+                .padding(.horizontal, 28)
+                .padding(.bottom, 22)
         }
-        .frame(width: 560)
+        .frame(width: 560, height: windowHeight)
         .background(SettingsPalette.backgroundGradient)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
