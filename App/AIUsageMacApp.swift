@@ -208,6 +208,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private var settingsWindow: NSWindow?
     private var localDismissMonitor: Any?
     private var globalDismissMonitor: Any?
+    private var localEscapeMonitor: Any?
 
     init(
         store: UsageStore,
@@ -270,8 +271,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(statusItemClicked(_:))
-        // Handle the press before a transient popover auto-closes on mouse-up.
-        // Otherwise the same click can immediately reopen it and appear ignored.
+        // Toggle on mouse-down so the status-item click has one unambiguous action.
         button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
@@ -279,7 +279,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
     private func configurePopover() {
         let darkAppearance = NSAppearance(named: .darkAqua)
-        popover.behavior = .transient
+        // AppKit's transient auto-close can race the status-item action and
+        // reopen the popover on the same click while a detached panel is up.
+        // The event monitors below own outside-click dismissal instead.
+        popover.behavior = .applicationDefined
         popover.delegate = self
         popover.animates = false
         popover.appearance = darkAppearance
@@ -391,9 +394,24 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         }
         globalDismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) {
             [weak self] _ in
+            let clickLocation = NSEvent.mouseLocation
             DispatchQueue.main.async {
-                self?.popover.performClose(nil)
+                guard let self, self.popover.isShown else { return }
+                // An inactive menu-bar app may observe its own status-item
+                // click globally. Let the button action toggle the popover.
+                if self.statusItem.button?.window?.frame.contains(clickLocation) == true {
+                    return
+                }
+                self.popover.performClose(nil)
             }
+        }
+        localEscapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
+            [weak self] event in
+            guard let self, self.popover.isShown, event.keyCode == 53 else {
+                return event
+            }
+            self.popover.performClose(nil)
+            return nil
         }
     }
 
@@ -405,6 +423,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         if let globalDismissMonitor {
             NSEvent.removeMonitor(globalDismissMonitor)
             self.globalDismissMonitor = nil
+        }
+        if let localEscapeMonitor {
+            NSEvent.removeMonitor(localEscapeMonitor)
+            self.localEscapeMonitor = nil
         }
     }
 
