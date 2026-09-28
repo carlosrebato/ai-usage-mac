@@ -2,8 +2,13 @@
 
 All notable changes to AI Usage for Mac are documented here.
 
-## 0.1.4-rc.3 — 2026-09-25
+## 0.1.4 — 2026-09-28
 
+- Let the menu-bar panel close on a second click even while the detached
+  always-visible card remains open; keep the card draggable without bringing
+  Settings to the front.
+- Make diagnostic export responsive and distinguish a failed refresh from
+  a successfully updated provider.
 - Offer optional local token-history access as part of the first provider
   connection, while keeping live limits connected if the folder is skipped.
 - Keep the optional local-history action available after a user skips it,
