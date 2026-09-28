@@ -27,6 +27,9 @@ You can enable Claude, Codex or both. The Claude and Codex desktop apps are not
 required for live limits: AI Usage signs in to each provider independently.
 Their command-line tools are optional and are used only when you choose to add
 local token, activity and estimated-cost history on Mac.
+The initial connection offers that read-only folder selection in the same setup
+flow. Canceling it keeps live limits connected; local history can be added
+later from Settings or Manage.
 
 ### Provider compatibility and pricing
 

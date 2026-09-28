@@ -208,6 +208,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private var settingsWindow: NSWindow?
     private var localDismissMonitor: Any?
     private var globalDismissMonitor: Any?
+    private var localEscapeMonitor: Any?
 
     init(
         store: UsageStore,
@@ -270,8 +271,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(statusItemClicked(_:))
-        // Handle the press before a transient popover auto-closes on mouse-up.
-        // Otherwise the same click can immediately reopen it and appear ignored.
+        // Toggle on mouse-down so the status-item click has one unambiguous action.
         button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
@@ -279,7 +279,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
     private func configurePopover() {
         let darkAppearance = NSAppearance(named: .darkAqua)
-        popover.behavior = .transient
+        // AppKit's transient auto-close can race the status-item action and
+        // reopen the popover on the same click while a detached panel is up.
+        // The event monitors below own outside-click dismissal instead.
+        popover.behavior = .applicationDefined
         popover.delegate = self
         popover.animates = false
         popover.appearance = darkAppearance
@@ -291,6 +294,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 settings: { [weak self] in self?.showSettings() }
             )
             .environmentObject(store)
+            .environmentObject(assistantSetupContext)
             .environmentObject(providerSelection)
         )
         hostingController.view.appearance = darkAppearance
@@ -300,7 +304,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private func observeChanges() {
         store.$providerStates
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
+            .sink { [weak self] states in
+                self?.providerSelection.recoverConnectedProvidersIfNeeded(states)
+                self?.updateStatusItem(providerStates: states)
+            }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
@@ -313,7 +320,9 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
         providerSelection.$activeProviders
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
+            .sink { [weak self] providers in
+                self?.updateStatusItem(activeProviders: providers)
+            }
             .store(in: &cancellables)
 
         minuteTimer = Timer.publish(every: 60, on: .main, in: .common)
@@ -385,9 +394,24 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         }
         globalDismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) {
             [weak self] _ in
+            let clickLocation = NSEvent.mouseLocation
             DispatchQueue.main.async {
-                self?.popover.performClose(nil)
+                guard let self, self.popover.isShown else { return }
+                // An inactive menu-bar app may observe its own status-item
+                // click globally. Let the button action toggle the popover.
+                if self.statusItem.button?.window?.frame.contains(clickLocation) == true {
+                    return
+                }
+                self.popover.performClose(nil)
             }
+        }
+        localEscapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
+            [weak self] event in
+            guard let self, self.popover.isShown, event.keyCode == 53 else {
+                return event
+            }
+            self.popover.performClose(nil)
+            return nil
         }
     }
 
@@ -399,6 +423,10 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         if let globalDismissMonitor {
             NSEvent.removeMonitor(globalDismissMonitor)
             self.globalDismissMonitor = nil
+        }
+        if let localEscapeMonitor {
+            NSEvent.removeMonitor(localEscapeMonitor)
+            self.localEscapeMonitor = nil
         }
     }
 
@@ -412,7 +440,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let menu = NSMenu()
 
         let resetItem = NSMenuItem(
-            title: language.text("Show reset times", "Mostrar tiempos de reinicio"),
+            title: language.text("Show reset times", "Mostrar tiempos de reseteo"),
             action: #selector(toggleResetTimes(_:)),
             keyEquivalent: ""
         )
@@ -494,7 +522,8 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
     private func showFloatingWindow() {
         popover.performClose(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Detaching the HUD must not reactivate an already-open Settings window.
+        settingsWindow?.orderOut(nil)
 
         if let floatingWindow {
             presentFloatingWindow(floatingWindow)
@@ -503,7 +532,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
 
         let panel = AIUsageFloatingPanel(
             contentRect: NSRect(origin: .zero, size: FloatingPanelView.size),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -528,11 +557,13 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func presentFloatingWindow(_ panel: NSPanel) {
-        panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
     }
 
-    private func updateStatusItem() {
+    private func updateStatusItem(
+        providerStates: [ProviderRuntimeState]? = nil,
+        activeProviders: Set<UsageProviderID>? = nil
+    ) {
         guard let button = statusItem.button else { return }
         let language = AppLanguage.current
         let showPercentage = UserDefaults.standard.object(
@@ -541,13 +572,15 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let showResetTimes = UserDefaults.standard.bool(
             forKey: AppPreferenceKey.showResetTimesInMenuBar
         )
+        let visibleProviders = activeProviders ?? providerSelection.activeProviders
+        let currentSnapshots = (providerStates ?? store.providerStates).map(\.snapshot)
         let snapshots = UsageProviderID.allCases
-            .filter(providerSelection.isActive)
+            .filter(visibleProviders.contains)
             .compactMap { provider in
-            store.snapshots.first {
-                $0.id == provider
-                    && $0.menuBarPercent != nil
-            }
+                currentSnapshots.first {
+                    $0.id == provider
+                        && $0.menuBarPercent != nil
+                }
             }
 
         guard showPercentage, !snapshots.isEmpty else {
@@ -555,10 +588,25 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 ?? NSApplication.shared.applicationIconImage)?.copy() as? NSImage
             image?.size = NSSize(width: 18, height: 18)
             image?.isTemplate = false
+            button.title = ""
+            button.imagePosition = .imageOnly
             button.image = image
-            button.toolTip = snapshots.isEmpty
-                ? language.text("AI Usage has no data", "AI Usage sin datos")
-                : "AI Usage"
+            if !showPercentage {
+                button.toolTip = language.text(
+                    "AI Usage · Menu bar percentages are turned off",
+                    "AI Usage · Los porcentajes de la barra de menú están desactivados"
+                )
+            } else if visibleProviders.isEmpty {
+                button.toolTip = language.text(
+                    "AI Usage · No assistant is shown. Choose Show in Manage.",
+                    "AI Usage · No hay asistentes visibles. Pulsa Mostrar en Gestionar."
+                )
+            } else {
+                button.toolTip = language.text(
+                    "AI Usage · Waiting for usage percentages",
+                    "AI Usage · Esperando los porcentajes de uso"
+                )
+            }
             statusItem.length = NSStatusItem.squareLength
             return
         }
@@ -575,8 +623,27 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             )
         )
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return }
+        guard let image = renderer.nsImage else {
+            // A failed SwiftUI offscreen render must not leave the launch icon
+            // in place when usable percentages are already available.
+            button.image = nil
+            button.imagePosition = .noImage
+            button.title = snapshots.compactMap { snapshot in
+                snapshot.menuBarPercent.map {
+                    "\(snapshot.id == .claude ? "C" : "X") \(Int($0.rounded()))%"
+                }
+            }.joined(separator: "  ")
+            button.toolTip = accessibilityText(
+                snapshots: snapshots,
+                language: language,
+                showResetTimes: showResetTimes
+            )
+            statusItem.length = NSStatusItem.variableLength
+            return
+        }
         image.isTemplate = false
+        button.title = ""
+        button.imagePosition = .imageOnly
         button.image = image
         button.toolTip = accessibilityText(
             snapshots: snapshots,
@@ -597,7 +664,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 ? ", \(language.text("saved data", "dato guardado"))"
                 : ""
             let reset = showResetTimes
-                ? ", \(language.text("resets in", "se reinicia en")) \(resetText(snapshot))"
+                ? ", \(language.text("resets in", "se resetea en")) \(resetText(snapshot))"
                 : ""
             return "\(snapshot.id.displayName), \(percent) \(snapshot.menuBarPeriodDescription(language: language))\(freshness)\(reset)"
         }
@@ -656,7 +723,7 @@ private struct MenuBarUsageLabel: View {
     private var accessibilityText: String {
         visibleSnapshots.map { snapshot in
             let reset = showResetTimes
-                ? ", \(language.text("resets in", "se reinicia en")) \(resetText(snapshot))"
+                ? ", \(language.text("resets in", "se resetea en")) \(resetText(snapshot))"
                 : ""
             return "\(snapshot.id.displayName), \(percent(snapshot.menuBarPercent)) \(snapshot.menuBarPeriodDescription(language: language))\(reset)"
         }.joined(separator: "; ")

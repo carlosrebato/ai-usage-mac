@@ -1,4 +1,5 @@
 import AIUsageCore
+import AIUsageMacServices
 import Combine
 import WidgetKit
 
@@ -43,6 +44,18 @@ final class ProviderSelectionStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    func recoverConnectedProvidersIfNeeded(_ states: [ProviderRuntimeState]) {
+        let recovered = ProviderVisibilityPreferences.recoverConnectedProvidersIfEmpty(
+            onboardingCompleted: UserDefaults.standard.bool(forKey: AppPreferenceKey.onboardingCompleted),
+            connectedProviders: Set(states.compactMap { state in
+                state.connection?.isConnected == true ? state.id : nil
+            })
+        )
+        guard !recovered.isEmpty else { return }
+        activeProviders.formUnion(recovered)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     var hasActiveProvider: Bool { !activeProviders.isEmpty }
 
     func filtering(_ snapshots: [ProviderUsageSnapshot]) -> [ProviderUsageSnapshot] {
@@ -57,5 +70,7 @@ enum AppPreferenceKey {
     static let showResetTimesInMenuBar = "showResetTimesInMenuBar"
     static let menuBarExpanded = "menuBarExpanded"
     static let onboardingCompleted = "onboardingCompleted"
+    static let skippedClaudeTokenHistory = "skippedClaudeTokenHistory"
+    static let skippedCodexTokenHistory = "skippedCodexTokenHistory"
     static let language = AppLanguage.preferenceKey
 }

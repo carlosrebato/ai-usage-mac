@@ -58,6 +58,8 @@ struct FloatingPanelView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(UsageTheme.hairline, lineWidth: 1)
         }
+        .gesture(WindowDragGesture())
+        .allowsWindowActivationEvents()
         .background(FloatingWindowConfigurator())
         .onReceive(timer) { now = $0 }
     }
@@ -83,7 +85,12 @@ private struct FloatingWindowConfigurator: NSViewRepresentable {
             guard let window = view.window else { return }
             let panelSize = FloatingPanelView.size
 
-            window.styleMask = [.borderless]
+            let desiredStyleMask: NSWindow.StyleMask = window is NSPanel
+                ? [.borderless, .nonactivatingPanel]
+                : [.borderless]
+            if window.styleMask != desiredStyleMask {
+                window.styleMask = desiredStyleMask
+            }
             window.backgroundColor = .clear
             window.isOpaque = false
             window.hasShadow = true

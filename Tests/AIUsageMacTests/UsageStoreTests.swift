@@ -168,7 +168,7 @@ private actor SequencedGatedMetricsReader: LocalUsageMetricsReading {
 }
 
 struct UsageStoreTests {
-    @Test @MainActor func fakeOnboardingCoversPermissionFailureRetryAndSuccess() async {
+    @Test @MainActor func fakeOnboardingCoversPermissionFailureRetryAndSuccess() async throws {
         let claude = ScriptedConnector(
             providerID: .claude,
             steps: [
@@ -202,6 +202,11 @@ struct UsageStoreTests {
         #expect(store.snapshots.first { $0.id == .claude }?.session.usedPercent == 24)
         #expect(store.snapshots.first { $0.id == .codex }?.weekly.usedPercent == 31)
         #expect(!store.isRefreshing)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let report = try decoder.decode(UsageDiagnosticReport.self, from: store.diagnosticReportData())
+        #expect(report.providers.allSatisfy { $0.lastFailureCode == nil })
     }
 
     @Test @MainActor func localMetricsNeverHoldTheOnboardingSpinnerOpen() async {
@@ -458,6 +463,7 @@ struct UsageStoreTests {
         let claude = report.providers.first { $0.id == .claude }
         #expect(claude?.phase == "connected")
         #expect(claude?.consecutiveFailures == 0)
+        #expect(claude?.lastFailureCode == "rate-limited")
         #expect((claude?.nextRefreshInSeconds ?? 0) >= 299)
     }
 
@@ -636,7 +642,8 @@ struct UsageStoreTests {
         #expect(!text.contains("SECRET-TOKEN"))
         #expect(!text.contains("/Users/alice"))
         #expect(text.contains("\"phase\" : \"retrying\""))
-        #expect(text.contains("\"schemaVersion\" : 1"))
+        #expect(text.contains("\"lastFailureCode\" : \"server-error\""))
+        #expect(text.contains("\"schemaVersion\" : 2"))
     }
 
     @Test @MainActor func publishedProviderStatesAreAlwaysInternallyCoherent() async {

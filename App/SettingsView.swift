@@ -29,6 +29,8 @@ struct SettingsView: View {
     @State private var tokenHistoryProvider: UsageProviderID?
     @State private var tokenHistoryErrors: [UsageProviderID: String] = [:]
     @State private var diagnosticExportError: String?
+    @State private var diagnosticExportDocument: DiagnosticExportDocument?
+    @State private var isExportingDiagnostics = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -70,7 +72,7 @@ struct SettingsView: View {
                         systemName: "timer",
                         title: language.text(
                             "Reset times in the menu bar",
-                            "Tiempos de reinicio en la barra de menú"
+                            "Tiempos de reseteo en la barra de menú"
                         ),
                         subtitle: language.text(
                             "Shows the countdown next to each percentage",
@@ -87,8 +89,7 @@ struct SettingsView: View {
 
                 launchSection
                 privacyCallout
-                diagnosticExport
-                supportLinks
+                supportActions
                 footer
             }
             .padding(.top, 26)
@@ -104,6 +105,17 @@ struct SettingsView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(SettingsWindowConfigurator(title: "AI Usage · Settings"))
+        .fileExporter(
+            isPresented: $isExportingDiagnostics,
+            document: diagnosticExportDocument,
+            contentType: .json,
+            defaultFilename: "AI-Usage-Diagnostics"
+        ) { result in
+            if case .failure(let error) = result {
+                diagnosticExportError = error.localizedDescription
+            }
+            diagnosticExportDocument = nil
+        }
         .preferredColorScheme(.dark)
         .environment(\.locale, language.locale)
         .onAppear {
@@ -212,6 +224,18 @@ struct SettingsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
 
+                if presentation.isConnected && !providerSelection.isActive(provider) {
+                    Button(language.text(
+                        "Hidden from the menu bar · Show",
+                        "Oculto de la barra de menú · Mostrar"
+                    )) {
+                        providerSelection.setActive(true, for: provider)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(UsageTheme.cached)
+                }
+
                 if !presentation.isConnected {
                     HStack(spacing: 5) {
                         if presentation.isBusy {
@@ -246,13 +270,18 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SettingsPalette.accent)
                         .padding(.top, 5)
+
+                        Text(tokenHistoryExplanation(for: provider))
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(SettingsPalette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
                 if let tokenHistoryError = tokenHistoryErrors[provider] {
                     Text(tokenHistoryError)
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(UsageTheme.red)
+                        .foregroundStyle(UsageTheme.cached)
                         .lineLimit(2)
                         .padding(.top, 2)
                 }
@@ -283,13 +312,36 @@ struct SettingsView: View {
     }
 
     private func beginProviderSignIn(_ provider: UsageProviderID) {
+        tokenHistoryErrors[provider] = nil
         Task { @MainActor in
-            _ = await store.connect(provider)
+            let wasConnected = store.connectionStatuses.first { $0.id == provider }?.isConnected == true
+            if await store.connect(provider), !wasConnected {
+                providerSelection.setActive(true, for: provider)
+                UserDefaults.standard.set(true, forKey: AppPreferenceKey.onboardingCompleted)
+                do {
+                    if try await ProviderDataAccessPicker.offerAccessDuringInitialConnection(for: provider) {
+                        await store.refreshWhenIdle(force: true, allowInteraction: false)
+                    }
+                } catch {
+                    tokenHistoryErrors[provider] = language.text(
+                        "Optional local history was not added: \(error.localizedDescription)",
+                        "No se añadió el histórico local opcional: \(error.localizedDescription)"
+                    )
+                }
+            }
         }
     }
 
     private func needsTokenHistoryAccess(_ provider: UsageProviderID) -> Bool {
         !ProviderDataAccess.shared.hasUsableAccess(for: metricsDirectory(for: provider))
+    }
+
+    private func tokenHistoryExplanation(for provider: UsageProviderID) -> String {
+        let tool = provider == .claude ? "Claude Code" : "Codex CLI"
+        return language.text(
+            "Optional · reads \(tool) files on this Mac for token history and estimated cost. Live limits work without it.",
+            "Opcional · lee los archivos de \(tool) de este Mac para el histórico de tokens y el coste estimado. Los límites funcionan sin ello."
+        )
     }
 
     @MainActor
@@ -373,13 +425,24 @@ struct SettingsView: View {
         .padding(.horizontal, 3)
     }
 
-    private var diagnosticExport: some View {
+    private var supportActions: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SettingsLinkButton(title: language.text(
-                "Export diagnostics…",
-                "Exportar diagnóstico…"
-            )) {
-                exportDiagnostics()
+            HStack(spacing: 16) {
+                SettingsLinkButton(title: language.text(
+                    "Export diagnostics…",
+                    "Exportar diagnóstico…"
+                )) {
+                    exportDiagnostics()
+                }
+                SettingsLinkButton(title: language.text("Help", "Ayuda")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac#readme")
+                }
+                SettingsLinkButton(title: language.text("Privacy", "Privacidad")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac/blob/main/PRIVACY.md")
+                }
+                SettingsLinkButton(title: language.text("Report an issue", "Informar de un problema")) {
+                    openSupportURL("https://github.com/carlosrebato/ai-usage-mac/issues/new/choose")
+                }
             }
             if let diagnosticExportError {
                 Text(diagnosticExportError)
@@ -393,28 +456,10 @@ struct SettingsView: View {
         diagnosticExportError = nil
         do {
             let data = try store.diagnosticReportData()
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.json]
-            panel.canCreateDirectories = true
-            panel.nameFieldStringValue = "AI-Usage-Diagnostics.json"
-            guard panel.runModal() == .OK, let url = panel.url else { return }
-            try data.write(to: url, options: .atomic)
+            diagnosticExportDocument = DiagnosticExportDocument(data: data)
+            isExportingDiagnostics = true
         } catch {
             diagnosticExportError = error.localizedDescription
-        }
-    }
-
-    private var supportLinks: some View {
-        HStack(spacing: 16) {
-            SettingsLinkButton(title: language.text("Help", "Ayuda")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac#readme")
-            }
-            SettingsLinkButton(title: language.text("Privacy", "Privacidad")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/blob/main/PRIVACY.md")
-            }
-            SettingsLinkButton(title: language.text("Report an issue", "Informar de un problema")) {
-                openSupportURL("https://github.com/carlosrebato/ai-usage-mac/issues/new/choose")
-            }
         }
     }
 
@@ -427,7 +472,7 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             Text(language.text(
                 "Estimated API equivalent · current reset period · USD",
-                "Equivalente API estimado · periodo de reinicio actual · USD"
+                "Equivalente API estimado · periodo de reseteo actual · USD"
             ))
             + Text("   v\(appVersion)")
 
@@ -758,6 +803,8 @@ private struct SettingsLinkButton: View {
     var body: some View {
         Button(title, action: action)
             .buttonStyle(.plain)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(.system(size: 11.5, weight: .semibold))
             .foregroundStyle(isHovering ? Color(red: 106 / 255, green: 223 / 255, blue: 169 / 255) : SettingsPalette.accent)
             .onHover { isHovering = $0 }
@@ -813,6 +860,24 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.isOpaque = true
         window.isMovableByWindowBackground = true
         window.hasShadow = true
+    }
+}
+
+private struct DiagnosticExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 
