@@ -29,6 +29,8 @@ struct SettingsView: View {
     @State private var tokenHistoryProvider: UsageProviderID?
     @State private var tokenHistoryErrors: [UsageProviderID: String] = [:]
     @State private var diagnosticExportError: String?
+    @State private var diagnosticExportDocument: DiagnosticExportDocument?
+    @State private var isExportingDiagnostics = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -103,6 +105,17 @@ struct SettingsView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(SettingsWindowConfigurator(title: "AI Usage · Settings"))
+        .fileExporter(
+            isPresented: $isExportingDiagnostics,
+            document: diagnosticExportDocument,
+            contentType: .json,
+            defaultFilename: "AI-Usage-Diagnostics"
+        ) { result in
+            if case .failure(let error) = result {
+                diagnosticExportError = error.localizedDescription
+            }
+            diagnosticExportDocument = nil
+        }
         .preferredColorScheme(.dark)
         .environment(\.locale, language.locale)
         .onAppear {
@@ -443,12 +456,8 @@ struct SettingsView: View {
         diagnosticExportError = nil
         do {
             let data = try store.diagnosticReportData()
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.json]
-            panel.canCreateDirectories = true
-            panel.nameFieldStringValue = "AI-Usage-Diagnostics.json"
-            guard panel.runModal() == .OK, let url = panel.url else { return }
-            try data.write(to: url, options: .atomic)
+            diagnosticExportDocument = DiagnosticExportDocument(data: data)
+            isExportingDiagnostics = true
         } catch {
             diagnosticExportError = error.localizedDescription
         }
@@ -851,6 +860,24 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.isOpaque = true
         window.isMovableByWindowBackground = true
         window.hasShadow = true
+    }
+}
+
+private struct DiagnosticExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 

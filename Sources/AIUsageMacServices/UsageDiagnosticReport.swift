@@ -12,6 +12,7 @@ public struct UsageDiagnosticReport: Codable, Sendable {
         public let observedAt: Date
         public let observationAgeSeconds: Int
         public let consecutiveFailures: Int
+        public let lastFailureCode: String?
         public let nextRefreshInSeconds: Int
         public let isVerifyingAuthorization: Bool
     }

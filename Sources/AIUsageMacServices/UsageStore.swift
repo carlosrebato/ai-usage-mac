@@ -18,6 +18,7 @@ public final class UsageStore: ObservableObject {
     private var pendingMetricPeriodEnd: Date?
     private var verifyingProviders: Set<UsageProviderID> = []
     private var consecutiveFailures: [UsageProviderID: Int] = [:]
+    private var lastFailureCodes: [UsageProviderID: String] = [:]
     private var nextRefreshAt: [UsageProviderID: Date] = [:]
     private var lastStalePresentationProbeAt: Date?
 
@@ -111,12 +112,13 @@ public final class UsageStore: ObservableObject {
                 observedAt: min(snapshot.observedAt, now),
                 observationAgeSeconds: max(0, Int(now.timeIntervalSince(snapshot.observedAt))),
                 consecutiveFailures: consecutiveFailures[provider, default: 0],
+                lastFailureCode: lastFailureCodes[provider],
                 nextRefreshInSeconds: max(0, Int(nextRefresh.timeIntervalSince(now))),
                 isVerifyingAuthorization: verifyingProviders.contains(provider)
             )
         }
         let report = UsageDiagnosticReport(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: now,
             appVersion: Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
@@ -196,6 +198,7 @@ public final class UsageStore: ObservableObject {
                     message: snapshot.message ?? AppLanguage.current.text("Connected", "Conectado")
                 ))
                 consecutiveFailures[outcome.providerID] = 0
+                lastFailureCodes[outcome.providerID] = nil
                 let interval = PollingPolicy.interval(
                     for: snapshot.severity,
                     consecutiveFailures: 0
@@ -204,6 +207,7 @@ public final class UsageStore: ObservableObject {
                 receivedLiveData = receivedLiveData || snapshot.source == .live
                 snapshotsNeedingMetrics.append(snapshot)
             case .failure(let error, let message, let retryAfter):
+                lastFailureCodes[outcome.providerID] = error?.diagnosticCode ?? "unknown-error"
                 let existing = snapshots.first { $0.id == outcome.providerID }
                 let requiresSignIn: Bool
                 if case .notAuthenticated = error {
@@ -427,6 +431,7 @@ public final class UsageStore: ObservableObject {
             )
         )
         consecutiveFailures[provider] = 0
+        lastFailureCodes[provider] = nil
         nextRefreshAt[provider] = .distantPast
         try? cache.save(snapshots)
         WidgetCenter.shared.reloadTimelines(ofKind: AIUsageWidgetKind.summary)

@@ -23,6 +23,20 @@ enum UsageConnectorError: LocalizedError, Equatable, Sendable {
     case serverError(String)
     case missingUsageWindows
 
+    var diagnosticCode: String {
+        switch self {
+        case .executableNotFound: "executable-not-found"
+        case .launchFailed: "launch-failed"
+        case .timedOut: "timed-out"
+        case .notAuthenticated: "not-authenticated"
+        case .permissionRequired: "permission-required"
+        case .rateLimited: "rate-limited"
+        case .malformedResponse: "malformed-response"
+        case .serverError: "server-error"
+        case .missingUsageWindows: "missing-usage-windows"
+        }
+    }
+
     var errorDescription: String? {
         let language = AppLanguage.current
         return switch self {
