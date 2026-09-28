@@ -70,7 +70,7 @@ struct SettingsView: View {
                         systemName: "timer",
                         title: language.text(
                             "Reset times in the menu bar",
-                            "Tiempos de reinicio en la barra de menú"
+                            "Tiempos de reseteo en la barra de menú"
                         ),
                         subtitle: language.text(
                             "Shows the countdown next to each percentage",
@@ -463,7 +463,7 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             Text(language.text(
                 "Estimated API equivalent · current reset period · USD",
-                "Equivalente API estimado · periodo de reinicio actual · USD"
+                "Equivalente API estimado · periodo de reseteo actual · USD"
             ))
             + Text("   v\(appVersion)")
 

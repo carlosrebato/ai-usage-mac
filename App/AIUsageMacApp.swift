@@ -418,7 +418,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let menu = NSMenu()
 
         let resetItem = NSMenuItem(
-            title: language.text("Show reset times", "Mostrar tiempos de reinicio"),
+            title: language.text("Show reset times", "Mostrar tiempos de reseteo"),
             action: #selector(toggleResetTimes(_:)),
             keyEquivalent: ""
         )
@@ -642,7 +642,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 ? ", \(language.text("saved data", "dato guardado"))"
                 : ""
             let reset = showResetTimes
-                ? ", \(language.text("resets in", "se reinicia en")) \(resetText(snapshot))"
+                ? ", \(language.text("resets in", "se resetea en")) \(resetText(snapshot))"
                 : ""
             return "\(snapshot.id.displayName), \(percent) \(snapshot.menuBarPeriodDescription(language: language))\(freshness)\(reset)"
         }
@@ -701,7 +701,7 @@ private struct MenuBarUsageLabel: View {
     private var accessibilityText: String {
         visibleSnapshots.map { snapshot in
             let reset = showResetTimes
-                ? ", \(language.text("resets in", "se reinicia en")) \(resetText(snapshot))"
+                ? ", \(language.text("resets in", "se resetea en")) \(resetText(snapshot))"
                 : ""
             return "\(snapshot.id.displayName), \(percent(snapshot.menuBarPercent)) \(snapshot.menuBarPeriodDescription(language: language))\(reset)"
         }.joined(separator: "; ")

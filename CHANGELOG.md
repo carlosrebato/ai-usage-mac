@@ -24,6 +24,7 @@ All notable changes to AI Usage for Mac are documented here.
 - Keep the assistant visibility button on one line in the management window,
   including when reconnect controls are beside it.
 - Put diagnostics, help, privacy and issue-report links on one line in Settings.
+- Use "Reseteo" instead of "Reinicia" for reset timing in the Spanish UI.
 
 ## 0.1.4-rc.2 — 2026-09-25
 

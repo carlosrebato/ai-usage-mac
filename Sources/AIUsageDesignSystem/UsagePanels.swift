@@ -73,7 +73,7 @@ public struct UsageCompactMetrics: View {
             )
 
             HStack(spacing: 5) {
-                microLabel(language.text("RESETS", "REINICIA"))
+                microLabel(language.text("RESETS", "RESETEO"))
                 Text(UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now))
                     .foregroundStyle(UsageTheme.metaText)
                 if snapshot.session.usedPercent != nil {
@@ -218,7 +218,7 @@ public struct UsageDetailedMetrics: View {
 
             HStack(spacing: 14) {
                 metric(
-                    label: language.text("RESETS", "REINICIA"),
+                    label: language.text("RESETS", "RESETEO"),
                     value: UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now)
                 )
                 HoverCostMetric(
@@ -771,7 +771,7 @@ public struct UsageFloatingMetrics: View {
                         height: 5
                     )
                     Text(
-                        "\(language.text("RESETS", "REINICIA")) \(UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now))"
+                        "\(language.text("RESETS", "RESETEO")) \(UsageResetFormatter.string(until: primary.resetsAt, relativeTo: now))"
                     )
                         .font(.system(size: 9, weight: .semibold))
                         .tracking(0.7)

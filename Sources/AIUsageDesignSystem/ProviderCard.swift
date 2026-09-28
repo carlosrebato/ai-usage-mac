@@ -126,7 +126,7 @@ public struct ProviderCard: View {
             reset = weeklyReset
             label = language.text("Week", "Semana")
         } else {
-            return language.text("Reset unknown", "Reinicio desconocido")
+            return language.text("Reset unknown", "Reseteo desconocido")
         }
         let seconds = max(0, reset.timeIntervalSince(now))
         let hours = Int(seconds / 3600)
@@ -134,11 +134,11 @@ public struct ProviderCard: View {
         return hours > 0
             ? language.text(
                 "\(label) resets in \(hours)h \(minutes)m",
-                "\(label) reinicia en \(hours) h \(minutes) min"
+                "\(label) se resetea en \(hours) h \(minutes) min"
             )
             : language.text(
                 "\(label) resets in \(minutes)m",
-                "\(label) reinicia en \(minutes) min"
+                "\(label) se resetea en \(minutes) min"
             )
     }
 
