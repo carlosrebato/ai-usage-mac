@@ -503,8 +503,11 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             settingsWindow.orderFrontRegardless()
             return
         }
+        let settingsHeight = SettingsView.preferredWindowHeight(
+            for: statusItem.button?.window?.screen ?? NSScreen.main
+        )
         let controller = NSHostingController(
-            rootView: SettingsView()
+            rootView: SettingsView(windowHeight: settingsHeight)
                 .environmentObject(store)
                 .environmentObject(assistantSetupContext)
                 .environmentObject(providerSelection)
@@ -512,7 +515,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let window = NSWindow(contentViewController: controller)
         window.title = AppLanguage.current.text("AI Usage Settings", "Ajustes de AI Usage")
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 520, height: 668))
+        window.setContentSize(NSSize(width: 560, height: settingsHeight))
         window.center()
         window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
