@@ -20,7 +20,7 @@ struct IOSDashboardView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("AI Usage")
+            .navigationTitle("ResetPls")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {

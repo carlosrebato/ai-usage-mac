@@ -618,7 +618,7 @@ struct UsageStoreTests {
         let claude = store.connectionStatuses.first { $0.id == .claude }
         #expect(codex?.phase == .actionRequired(.signIn))
         #expect(codex?.notice == ProviderConnectionNotice.none)
-        #expect(codex?.message(in: .spanish) == "Conecta AI Usage para consultar tu uso.")
+        #expect(codex?.message(in: .spanish) == "Conecta ResetPls para consultar tu uso.")
         #expect(claude?.isConnected == true)
         #expect(store.snapshots.first { $0.id == .codex }?.source == .unavailable)
     }
@@ -791,9 +791,9 @@ struct UsageStoreTests {
         let codex = store.connectionStatuses.first { $0.id == .codex }
         #expect(codex?.phase == .actionRequired(.signIn))
         #expect(codex?.dataState == .reauthRequired)
-        #expect(codex?.message == "Connect AI Usage to read your usage.")
+        #expect(codex?.message == "Connect ResetPls to read your usage.")
         #expect(codex?.notice == ProviderConnectionNotice.none)
-        #expect(codex?.message(in: .spanish) == "Conecta AI Usage para consultar tu uso.")
+        #expect(codex?.message(in: .spanish) == "Conecta ResetPls para consultar tu uso.")
         #expect(store.snapshots.first { $0.id == .codex }?.source == .unavailable)
         #expect(cache.load()[.codex] == nil)
     }

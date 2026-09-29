@@ -35,7 +35,9 @@ read_plist() {
 }
 
 APP_ID="$(read_plist "$APP_INFO" CFBundleIdentifier)"
+APP_DISPLAY_NAME="$(read_plist "$APP_INFO" CFBundleDisplayName)"
 WIDGET_ID="$(read_plist "$WIDGET_INFO" CFBundleIdentifier)"
+WIDGET_DISPLAY_NAME="$(read_plist "$WIDGET_INFO" CFBundleDisplayName)"
 APP_VERSION="$(read_plist "$APP_INFO" CFBundleShortVersionString)"
 WIDGET_VERSION="$(read_plist "$WIDGET_INFO" CFBundleShortVersionString)"
 APP_BUILD="$(read_plist "$APP_INFO" CFBundleVersion)"
@@ -47,7 +49,9 @@ AUTOMATIC_CHECKS="$(read_plist "$APP_INFO" SUEnableAutomaticChecks)"
 AUTOMATIC_INSTALLS="$(read_plist "$APP_INFO" SUAutomaticallyUpdate)"
 
 [ "$APP_ID" = "$EXPECTED_APP_ID" ] || fail "unexpected app bundle identifier: $APP_ID"
+[ "$APP_DISPLAY_NAME" = "ResetPls" ] || fail "unexpected app display name: $APP_DISPLAY_NAME"
 [ "$WIDGET_ID" = "$EXPECTED_WIDGET_ID" ] || fail "unexpected widget bundle identifier: $WIDGET_ID"
+[ "$WIDGET_DISPLAY_NAME" = "ResetPls" ] || fail "unexpected widget display name: $WIDGET_DISPLAY_NAME"
 [ "$APP_VERSION" = "$WIDGET_VERSION" ] || fail "app and widget marketing versions differ"
 [ "$APP_BUILD" = "$WIDGET_BUILD" ] || fail "app and widget build numbers differ"
 [ "$EXTENSION_POINT" = "com.apple.widgetkit-extension" ] || fail "unexpected extension point: $EXTENSION_POINT"
@@ -58,4 +62,4 @@ AUTOMATIC_INSTALLS="$(read_plist "$APP_INFO" SUAutomaticallyUpdate)"
 
 lipo "$APP_EXECUTABLE" -verify_arch arm64 >/dev/null 2>&1 || fail "app does not contain arm64"
 
-echo "Validated AI Usage $APP_VERSION ($APP_BUILD) with WidgetKit and Sparkle auto-update."
+echo "Validated ResetPls $APP_VERSION ($APP_BUILD) with WidgetKit and Sparkle auto-update."

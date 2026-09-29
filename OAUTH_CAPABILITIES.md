@@ -1,6 +1,6 @@
 # OAuth capabilities and viability gate
 
-AI Usage is an independent client and is not affiliated with Anthropic or
+ResetPls is an independent client and is not affiliated with Anthropic or
 OpenAI. Provider usage endpoints used by the app are not documented for
 third-party integrations and can change or be blocked.
 
@@ -21,12 +21,12 @@ work.
   Codex.
 - Fixed effective scopes: `openid`, `profile`, `email`, `offline_access`,
   `api.connectors.read`, `api.connectors.invoke`.
-- AI Usage calls only the ChatGPT usage-limit endpoint and does not invoke a
+- ResetPls calls only the ChatGPT usage-limit endpoint and does not invoke a
   model or connector.
 - Mac fallback: documented `codex app-server` method
   `account/rateLimits/read`; the subprocess owns its credentials.
 
-The Codex scopes are broader than the single operation AI Usage performs because
+The Codex scopes are broader than the single operation ResetPls performs because
 they are fixed by the borrowed public client. This is an accepted, documented
 risk for the spike. A provider-owned client registration is the only clean way
 to narrow them further.

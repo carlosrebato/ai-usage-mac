@@ -120,7 +120,7 @@ private struct UsageWidgetView: View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: "chart.bar.fill")
                 .foregroundStyle(UsageTheme.green)
-            Text(language.text("Open AI Usage", "Abre AI Usage"))
+            Text(language.text("Open ResetPls", "Abre ResetPls"))
                 .font(.headline)
                 .foregroundStyle(UsageTheme.primaryText)
             Text(language.text(
@@ -146,7 +146,7 @@ private struct AIUsageWidget: Widget {
         StaticConfiguration(kind: kind, provider: UsageWidgetProvider()) { entry in
             UsageWidgetView(entry: entry)
         }
-        .configurationDisplayName("AI Usage")
+        .configurationDisplayName("ResetPls")
         .description(language.text(
             "Your Claude and Codex limits at a glance.",
             "Tus límites de Claude y Codex de un vistazo."

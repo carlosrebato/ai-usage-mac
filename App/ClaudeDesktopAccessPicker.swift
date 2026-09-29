@@ -23,12 +23,12 @@ enum ProviderDataAccessPicker {
             )
         panel.message = duringInitialConnection
             ? language.text(
-                "\(providerName) is connected. Optional: select \(folderName) to add \(localToolName) token history and estimated cost. AI Usage scans local session files, which may contain conversation text, but does not store or send that text. Cancel to skip; live limits still work.",
-                "\(providerName) está conectado. Opcional: selecciona \(folderName) para añadir el histórico de tokens y el coste estimado de \(localToolName). AI Usage examina archivos locales de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto. Pulsa Cancelar para omitirlo; los límites seguirán funcionando."
+                "\(providerName) is connected. Optional: select \(folderName) to add \(localToolName) token history and estimated cost. ResetPls scans local session files, which may contain conversation text, but does not store or send that text. Cancel to skip; live limits still work.",
+                "\(providerName) está conectado. Opcional: selecciona \(folderName) para añadir el histórico de tokens y el coste estimado de \(localToolName). ResetPls examina archivos locales de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto. Pulsa Cancelar para omitirlo; los límites seguirán funcionando."
             )
             : language.text(
-                "Select \(folderName) to add local token history and estimated cost. AI Usage scans session files, which may contain conversation text, but does not store or send that text.",
-                "Selecciona \(folderName) para añadir el histórico local de tokens y el coste estimado. AI Usage examina archivos de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto."
+                "Select \(folderName) to add local token history and estimated cost. ResetPls scans session files, which may contain conversation text, but does not store or send that text.",
+                "Selecciona \(folderName) para añadir el histórico local de tokens y el coste estimado. ResetPls examina archivos de sesiones, que pueden contener conversaciones, pero no guarda ni envía ese texto."
             )
         panel.prompt = language.text("Use \(folderName)", "Usar \(folderName)")
         panel.canChooseFiles = false

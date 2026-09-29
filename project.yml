@@ -17,8 +17,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    CURRENT_PROJECT_VERSION: 14
-    MARKETING_VERSION: 0.1.4
+    CURRENT_PROJECT_VERSION: 17
+    MARKETING_VERSION: 0.1.5
     AI_USAGE_APP_BUNDLE_ID: com.example.aiusage
     AI_USAGE_WIDGET_BUNDLE_ID: $(AI_USAGE_APP_BUNDLE_ID).widgets
     AI_USAGE_IOS_BUNDLE_ID: com.example.aiusage.ios
@@ -77,7 +77,7 @@ targets:
     info:
       path: Configurations/AIUsageWidgets-Info.plist
       properties:
-        CFBundleDisplayName: AI Usage
+        CFBundleDisplayName: ResetPls
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AIUsageAppGroup: $(AI_USAGE_APP_GROUP)
@@ -125,9 +125,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(AI_USAGE_IOS_BUNDLE_ID)
-        PRODUCT_NAME: AI Usage
+        PRODUCT_NAME: ResetPls
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: AI Usage
+        INFOPLIST_KEY_CFBundleDisplayName: ResetPls
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_AIUsageRemoteConfigURL: $(AI_USAGE_REMOTE_CONFIG_URL)

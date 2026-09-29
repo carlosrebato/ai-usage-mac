@@ -120,12 +120,12 @@ struct SettingsView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
         .ignoresSafeArea(.container, edges: .top)
-        .background(SettingsWindowConfigurator(title: "AI Usage · Settings"))
+        .background(SettingsWindowConfigurator(title: "ResetPls · Settings"))
         .fileExporter(
             isPresented: $isExportingDiagnostics,
             document: diagnosticExportDocument,
             contentType: .json,
-            defaultFilename: "AI-Usage-Diagnostics"
+            defaultFilename: "ResetPls-Diagnostics"
         ) { result in
             if case .failure(let error) = result {
                 diagnosticExportError = error.localizedDescription
@@ -142,7 +142,7 @@ struct SettingsView: View {
 
     private var titleBar: some View {
         ZStack {
-            Text("AI USAGE · SETTINGS")
+            Text("RESETPLS · SETTINGS")
                 .font(.system(size: 12, weight: .bold))
                 .tracking(1.92)
                 .foregroundStyle(SettingsPalette.secondary)
@@ -171,7 +171,7 @@ struct SettingsView: View {
                 }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("AI Usage")
+                Text("ResetPls")
                     .font(.system(size: 19, weight: .bold))
                     .tracking(-0.38)
                     .foregroundStyle(SettingsPalette.hero)
@@ -430,8 +430,8 @@ struct SettingsView: View {
                 .padding(.top, 2)
 
             Text(language.text(
-                "Counters are processed locally with read-only access. AI Usage does not store or send the content of your conversations.",
-                "Los contadores se procesan localmente y con acceso de solo lectura. AI Usage no almacena ni envía el contenido de tus conversaciones."
+                "Counters are processed locally with read-only access. ResetPls does not store or send the content of your conversations.",
+                "Los contadores se procesan localmente y con acceso de solo lectura. ResetPls no almacena ni envía el contenido de tus conversaciones."
             ))
                 .font(.system(size: 11.5, weight: .medium))
                 .lineSpacing(5)
@@ -527,7 +527,7 @@ struct SettingsView: View {
             .fixedSize()
             .tint(SettingsPalette.accent)
 
-            SettingsQuitButton(title: language.text("Quit AI Usage", "Salir de AI Usage")) {
+            SettingsQuitButton(title: language.text("Quit ResetPls", "Salir de ResetPls")) {
                 NSApplication.shared.terminate(nil)
             }
         }
@@ -739,7 +739,7 @@ struct SettingsView: View {
         }
         return switch launchAtLogin.status {
         case .enabled:
-            language.text("AI Usage will open automatically", "AI Usage se abrirá automáticamente")
+            language.text("ResetPls will open automatically", "ResetPls se abrirá automáticamente")
         case .requiresApproval:
             language.text("Confirm it in System Settings", "Falta confirmarlo en Ajustes del Sistema")
         case .disabled:

@@ -32,8 +32,8 @@ struct ConnectionSetupView: View {
                         .tracking(1.4)
                         .foregroundStyle(UsageTheme.tertiaryText)
                     Text(language.text(
-                        "Connect AI Usage to refresh your limits. Your other apps stay signed in.",
-                        "Conecta AI Usage para actualizar tus límites. Las demás apps mantienen su sesión."
+                        "Connect ResetPls to refresh your limits. Your other apps stay signed in.",
+                        "Conecta ResetPls para actualizar tus límites. Las demás apps mantienen su sesión."
                     ))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(UsageTheme.secondaryText)

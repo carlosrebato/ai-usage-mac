@@ -37,7 +37,7 @@ struct AIUsageMacApp: App {
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
 
-        Window("AI Usage HUD", id: "floating") {
+        Window("ResetPls HUD", id: "floating") {
             FloatingPanelView()
                 .environmentObject(appDelegate.store)
                 .environmentObject(appDelegate.providerSelection)
@@ -60,7 +60,7 @@ struct AIUsageMacApp: App {
     private var assistantWindowTitle: String {
         switch appDelegate.assistantSetupContext.mode {
         case .onboarding:
-            language.text("Set up AI Usage", "Configura AI Usage")
+            language.text("Set up ResetPls", "Configura ResetPls")
         case .management:
             language.text("Manage AI assistants", "Gestionar asistentes de IA")
         }
@@ -179,7 +179,7 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
                     FileHandle.standardOutput.write(Data("\n".utf8))
                 }
             } catch {
-                fputs("AI Usage smoke report failed: \(error)\n", stderr)
+                fputs("ResetPls smoke report failed: \(error)\n", stderr)
             }
             NSApplication.shared.terminate(nil)
         }
@@ -247,7 +247,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 self?.showFloatingWindow()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     let isVisible = self?.floatingWindow?.isVisible == true
-                    fputs("AI Usage detach visible: \(isVisible)\n", stderr)
+                    fputs("ResetPls detach visible: \(isVisible)\n", stderr)
                     if let reportIndex = CommandLine.arguments.firstIndex(
                         of: "--verify-detach-report"
                     ), CommandLine.arguments.indices.contains(reportIndex + 1) {
@@ -462,7 +462,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: language.text("Quit AI Usage", "Salir de AI Usage"),
+            title: language.text("Quit ResetPls", "Salir de ResetPls"),
             action: #selector(quitApplication(_:)),
             keyEquivalent: "q"
         )
@@ -513,7 +513,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(providerSelection)
         )
         let window = NSWindow(contentViewController: controller)
-        window.title = AppLanguage.current.text("AI Usage Settings", "Ajustes de AI Usage")
+        window.title = AppLanguage.current.text("ResetPls Settings", "Ajustes de ResetPls")
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.setContentSize(NSSize(width: 560, height: settingsHeight))
         window.center()
@@ -596,18 +596,18 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             button.image = image
             if !showPercentage {
                 button.toolTip = language.text(
-                    "AI Usage · Menu bar percentages are turned off",
-                    "AI Usage · Los porcentajes de la barra de menú están desactivados"
+                    "ResetPls · Menu bar percentages are turned off",
+                    "ResetPls · Los porcentajes de la barra de menú están desactivados"
                 )
             } else if visibleProviders.isEmpty {
                 button.toolTip = language.text(
-                    "AI Usage · No assistant is shown. Choose Show in Manage.",
-                    "AI Usage · No hay asistentes visibles. Pulsa Mostrar en Gestionar."
+                    "ResetPls · No assistant is shown. Choose Show in Manage.",
+                    "ResetPls · No hay asistentes visibles. Pulsa Mostrar en Gestionar."
                 )
             } else {
                 button.toolTip = language.text(
-                    "AI Usage · Waiting for usage percentages",
-                    "AI Usage · Esperando los porcentajes de uso"
+                    "ResetPls · Waiting for usage percentages",
+                    "ResetPls · Esperando los porcentajes de uso"
                 )
             }
             statusItem.length = NSStatusItem.squareLength
@@ -697,7 +697,7 @@ private struct MenuBarUsageLabel: View {
     var body: some View {
         if visibleSnapshots.isEmpty {
             Image(systemName: "chart.bar.fill")
-                .accessibilityLabel(language.text("AI Usage has no data", "AI Usage sin datos"))
+                .accessibilityLabel(language.text("ResetPls has no data", "ResetPls sin datos"))
                 .frame(width: menuBarLabelHeight, height: menuBarLabelHeight)
         } else if let renderedLabel {
             Image(nsImage: renderedLabel)

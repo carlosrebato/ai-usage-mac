@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible AI Usage problem
+description: Report a reproducible ResetPls problem
 title: "[Bug]: "
 labels: [bug]
 body:
@@ -9,7 +9,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: AI Usage version
+      label: ResetPls version
     validations:
       required: true
   - type: input
