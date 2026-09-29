@@ -2,7 +2,7 @@
 
 All notable changes to ResetPls for Mac (formerly AI Usage) are documented here.
 
-## 0.1.5 — unreleased
+## 0.1.5 — 2026-09-29
 
 - Rename the visible Mac and iOS app, widget, onboarding, settings and diagnostics
   to ResetPls. Keep the macOS bundle name, bundle IDs, Keychain access group and
