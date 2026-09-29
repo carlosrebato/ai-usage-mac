@@ -229,7 +229,7 @@ private final class OAuthLoopbackServer: @unchecked Sendable {
             Self.respond(
                 connection,
                 status: "200 OK",
-                body: "<h2>Connected</h2><p>You can return to AI Usage.</p>"
+                body: "<h2>Connected</h2><p>You can return to ResetPls.</p>"
             )
             self.finish(.success(url))
         }

@@ -57,8 +57,8 @@ public struct ProviderConnectionStatus: Identifiable, Equatable, Sendable {
     public func message(in language: AppLanguage) -> String {
         if phase == .actionRequired(.signIn), notice == .none {
             return language.text(
-                "Connect AI Usage to read your usage.",
-                "Conecta AI Usage para consultar tu uso."
+                "Connect ResetPls to read your usage.",
+                "Conecta ResetPls para consultar tu uso."
             )
         }
         return message

@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome. Please keep AI Usage local-first, read-only and
+Contributions are welcome. Please keep ResetPls local-first, read-only and
 lightweight.
 
 1. Open an issue before large behavioral or data-model changes.

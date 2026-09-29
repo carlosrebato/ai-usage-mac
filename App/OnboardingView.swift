@@ -98,8 +98,8 @@ struct OnboardingView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SettingsPalette.faint)
                     Text(language.text(
-                        "AI Usage uses these connections only to read usage data.",
-                        "AI Usage usa estas conexiones solo para leer datos de uso."
+                        "ResetPls uses these connections only to read usage data.",
+                        "ResetPls usa estas conexiones solo para leer datos de uso."
                     ))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(SettingsPalette.secondary)
@@ -144,7 +144,7 @@ struct OnboardingView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
         .overlay(alignment: .top) {
-            Text(language.text("SET UP AI USAGE", "CONFIGURAR AI USAGE"))
+            Text(language.text("SET UP RESETPLS", "CONFIGURAR RESETPLS"))
                 .font(.system(size: 12, weight: .bold))
                 .tracking(1.92)
                 .foregroundStyle(SettingsPalette.secondary)
@@ -174,8 +174,8 @@ struct OnboardingView: View {
                     .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(SettingsPalette.title)
                 Text(language.text(
-                    "AI Usage will open automatically",
-                    "AI Usage se abrirá automáticamente"
+                    "ResetPls will open automatically",
+                    "ResetPls se abrirá automáticamente"
                 ))
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(SettingsPalette.secondary)
@@ -242,8 +242,8 @@ struct OnboardingView: View {
                         .foregroundStyle(SettingsPalette.faint)
 
                     Text(language.text(
-                        "AI Usage uses these connections only to read usage data.",
-                        "AI Usage usa estas conexiones solo para leer datos de uso."
+                        "ResetPls uses these connections only to read usage data.",
+                        "ResetPls usa estas conexiones solo para leer datos de uso."
                     ))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(SettingsPalette.secondary)
@@ -447,7 +447,7 @@ struct OnboardingView: View {
 
     private var windowTitle: String {
         isOnboarding
-            ? language.text("Set up AI Usage", "Configura AI Usage")
+            ? language.text("Set up ResetPls", "Configura ResetPls")
             : language.text("Manage AI assistants", "Gestionar asistentes de IA")
     }
 
@@ -458,8 +458,8 @@ struct OnboardingView: View {
                 "Elige Claude, Codex o ambos. Conecta tu cuenta para ver los límites de uso; el histórico local de tokens es un segundo paso opcional."
             )
             : language.text(
-                "Review or update the local connections AI Usage uses to read your usage counters.",
-                "Revisa o actualiza las conexiones locales que AI Usage usa para leer tus contadores de uso."
+                "Review or update the local connections ResetPls uses to read your usage counters.",
+                "Revisa o actualiza las conexiones locales que ResetPls usa para leer tus contadores de uso."
             )
     }
 
@@ -647,7 +647,7 @@ struct OnboardingView: View {
             return CardState(
                 title: notice == .error
                     ? language.text("Could not connect", "No se pudo conectar")
-                    : language.text("Connect AI Usage", "Conecta AI Usage"),
+                    : language.text("Connect ResetPls", "Conecta ResetPls"),
                 subtitle: message,
                 indicator: notice == .error ? .error : .none,
                 actionTitle: language.text(
@@ -680,8 +680,8 @@ struct OnboardingView: View {
             title: provider == .claude ? "Claude" : "Codex",
             subtitle: provider == .claude
                 ? language.text(
-                    "Sign in securely in your browser. AI Usage never sees your password.",
-                    "Inicia sesión de forma segura en el navegador. AI Usage nunca ve tu contraseña."
+                    "Sign in securely in your browser. ResetPls never sees your password.",
+                    "Inicia sesión de forma segura en el navegador. ResetPls nunca ve tu contraseña."
                 )
                 : language.text(
                     "Sign in securely in your browser. Your Codex session stays separate.",

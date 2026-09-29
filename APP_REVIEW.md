@@ -7,7 +7,7 @@ reset times, freshness, manual refresh, sign-out and an explicit synthetic demo.
 It intentionally excludes StoreKit, CloudKit, prediction, alerts, advanced
 charts and widgets. Review notes must state:
 
-- AI Usage is an independent, non-affiliated usage viewer.
+- ResetPls is an independent, non-affiliated usage viewer.
 - Authentication occurs on-device against each provider with PKCE.
 - Credentials never reach project infrastructure or another device.
 - The ellipsis menu enables “App Review demo” without an account.

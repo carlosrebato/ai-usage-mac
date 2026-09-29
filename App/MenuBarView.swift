@@ -82,7 +82,7 @@ struct MenuBarView: View {
 
     private var expandedHeader: some View {
         HStack(alignment: .top) {
-            Text("AI USAGE")
+            Text("RESETPLS")
                 .font(.system(size: 13, weight: .bold))
                 .tracking(2.35)
                 .foregroundStyle(UsageTheme.tertiaryText)

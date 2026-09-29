@@ -1,6 +1,6 @@
 # Privacy
 
-AI Usage is a local-first Mac and iOS utility. It does not operate an account
+ResetPls is a local-first Mac and iOS utility. It does not operate an account
 server and does not send conversation content, credentials or usage history to
 the project maintainers.
 
@@ -27,12 +27,12 @@ separately; the user may enable either one or both.
 
 ## Network access
 
-AI Usage uses its own per-device Claude/Codex authorization to retrieve current
+ResetPls uses its own per-device Claude/Codex authorization to retrieve current
 limits directly from the corresponding provider endpoint. Credentials are sent
 only to that provider. No token, email, account ID, prompt, response, filesystem
 path, analytics event or diagnostic is sent to the maintainers.
 
-On macOS builds with the signed safety switch configured, AI Usage also requests
+On macOS builds with the signed safety switch configured, ResetPls also requests
 a public policy file from GitHub at most once per day. That request contains no
 provider credentials or usage counters; GitHub may receive the device's IP
 address as with any normal HTTPS request. The app verifies the file's signature
@@ -40,8 +40,8 @@ before applying it and retains only the last verified policy locally.
 
 Claude requests only the profile scope. Codex receives the fixed OpenID,
 profile, email, offline-access and connector scopes of the public Codex client;
-AI Usage calls only the usage endpoint. These endpoints are not documented as
-third-party APIs. AI Usage is independent and not affiliated with Anthropic or
+ResetPls calls only the usage endpoint. These endpoints are not documented as
+third-party APIs. ResetPls is independent and not affiliated with Anthropic or
 OpenAI.
 
 The App Review demo uses synthetic values and does not contact a provider.

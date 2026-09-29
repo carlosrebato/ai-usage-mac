@@ -1,6 +1,6 @@
 # Performance
 
-AI Usage is designed to remain idle between provider refreshes and to ingest
+ResetPls is designed to remain idle between provider refreshes and to ingest
 only appended Claude and Codex session data.
 
 ## Release 0.1.0 baseline

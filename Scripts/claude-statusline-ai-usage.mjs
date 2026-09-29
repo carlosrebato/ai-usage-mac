@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Optional Claude Code status-line adapter for AI Usage on macOS. Claude Code
+// Optional Claude Code status-line adapter for ResetPls on macOS. Claude Code
 // sends usage metadata on stdin; this script stores only the numeric limits in
 // an atomically replaced local file. It never reads or writes credentials.
 

@@ -1,6 +1,12 @@
 # Changelog
 
-All notable changes to AI Usage for Mac are documented here.
+All notable changes to ResetPls for Mac (formerly AI Usage) are documented here.
+
+## 0.1.5 — unreleased
+
+- Rename the visible Mac and iOS app, widget, onboarding, settings and diagnostics
+  to ResetPls. Keep the macOS bundle name, bundle IDs, Keychain access group and
+  Sparkle feed unchanged so existing installations can receive the update.
 
 ## 0.1.4 — 2026-09-28
 

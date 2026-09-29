@@ -11,7 +11,7 @@ public enum ProviderPolicyError: LocalizedError, Equatable, Sendable {
         case .providerDisabled(let provider, let notice):
             notice ?? "\(provider.displayName) is temporarily disabled for safety."
         case .minimumVersionRequired(let version, let notice):
-            notice ?? "AI Usage \(version) or later is required."
+            notice ?? "ResetPls \(version) or later is required."
         }
     }
 }

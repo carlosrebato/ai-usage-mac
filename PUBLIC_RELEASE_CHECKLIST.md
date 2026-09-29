@@ -1,6 +1,6 @@
 # Public release checklist
 
-AI Usage is intended to become a standalone, open-source macOS project. Do not
+ResetPls is intended to become a standalone, open-source macOS project. Do not
 make the current monorepo public as a shortcut: its unrelated history, workflow
 logs and configuration must not become part of the release.
 

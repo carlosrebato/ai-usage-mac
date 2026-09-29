@@ -1,7 +1,7 @@
 import AIUsageCore
 import Foundation
 
-/// Documented local fallback. Codex owns and refreshes its credentials; AI Usage
+/// Documented local fallback. Codex owns and refreshes its credentials; ResetPls
 /// exchanges only JSON-RPC messages with the subprocess and never reads auth.json.
 struct CodexAppServerFallback: UsageConnector {
     let providerID = UsageProviderID.codex

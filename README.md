@@ -1,10 +1,10 @@
-# AI Usage — Claude Code & Codex Usage Tracker for Mac and iPhone
+# ResetPls — Claude Code & Codex Usage Tracker for Mac and iPhone
 
 [![CI](https://github.com/carlosrebato/ai-usage-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosrebato/ai-usage-mac/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/carlosrebato/ai-usage-mac?include_prereleases)](https://github.com/carlosrebato/ai-usage-mac/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-AI Usage is an independent, local-first Mac and iPhone app for tracking Claude
+ResetPls is an independent, local-first Mac and iPhone app for tracking Claude
 Code and OpenAI Codex usage limits, reset times, tokens and estimated cost. It
 reads local counters in read-only mode and never sends conversation content or
 credentials to the project maintainers.
@@ -13,7 +13,10 @@ credentials to the project maintainers.
 
 Download the latest notarized macOS ZIP from
 [GitHub Releases](https://github.com/carlosrebato/ai-usage-mac/releases), unzip it
-and move **AI Usage.app** to Applications. The current release is a public beta;
+and move **AI Usage.app** to Applications. The app is now branded **ResetPls**;
+the on-disk bundle keeps its former name so existing installations can update
+automatically. Releases built before version 0.1.5 still display the old name.
+The current release is a public beta;
 please report reproducible issues without attaching credentials or conversation
 logs.
 
@@ -21,10 +24,10 @@ logs.
 
 - macOS 15 or iOS 18 (the iOS target is currently an App Review viability spike)
 - A Claude or ChatGPT account. Each device signs in independently through the
-  provider; AI Usage never imports a Claude Code, Codex CLI or desktop token.
+  provider; ResetPls never imports a Claude Code, Codex CLI or desktop token.
 
 You can enable Claude, Codex or both. The Claude and Codex desktop apps are not
-required for live limits: AI Usage signs in to each provider independently.
+required for live limits: ResetPls signs in to each provider independently.
 Their command-line tools are optional and are used only when you choose to add
 local token, activity and estimated-cost history on Mac.
 The initial connection offers that read-only folder selection in the same setup
@@ -34,7 +37,7 @@ later from Settings or Manage.
 ### Provider compatibility and pricing
 
 The supported configuration is macOS 15 or later with a current Claude or
-ChatGPT web account. AI Usage does not depend on a particular Claude Code or
+ChatGPT web account. ResetPls does not depend on a particular Claude Code or
 Codex CLI version for authentication or live limits. Optional local-history
 imports are tested against the current stable CLI formats at release time;
 unknown JSON fields are ignored, and an incompatible local format must degrade
@@ -95,10 +98,10 @@ are never stored in the repository.
 
 ## How it works
 
-AI Usage opens a native dashboard and adds usage indicators to the menu bar.
+ResetPls opens a native dashboard and adds usage indicators to the menu bar.
 Claude and Codex sign in through browser OAuth with PKCE, random state and a
 different refresh-token family on every device. Tokens are stored in a
-non-synchronizable `ThisDeviceOnly` Keychain item. AI Usage never receives the
+non-synchronizable `ThisDeviceOnly` Keychain item. ResetPls never receives the
 user's password or reads another app's credential files. It then requests the
 current limits directly from provider endpoints. Those usage endpoints are not
 documented as third-party APIs and may change without notice.
@@ -131,9 +134,9 @@ Optional access to `~/.claude` and `~/.codex` is read-only and is used only for
 local token/activity/cost history on Mac. It is never used for authentication.
 For limit stability, Mac can fall back to Claude's numeric statusline artifact
 or the documented `codex app-server` rate-limit method; neither exposes a token
-to AI Usage. iPhone always updates directly and does not depend on the Mac.
+to ResetPls. iPhone always updates directly and does not depend on the Mac.
 
-AI Usage is not affiliated with, endorsed by or sponsored by Anthropic or
+ResetPls is not affiliated with, endorsed by or sponsored by Anthropic or
 OpenAI. See [OAUTH_CAPABILITIES.md](OAUTH_CAPABILITIES.md) for exact scopes and
 [APP_REVIEW.md](APP_REVIEW.md) for the blocking distribution gate.
 

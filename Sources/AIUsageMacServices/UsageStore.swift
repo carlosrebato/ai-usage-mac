@@ -534,8 +534,8 @@ public final class UsageStore: ObservableObject {
                 phase: .actionRequired(.signIn),
                 dataState: .reauthRequired,
                 message: AppLanguage.current.text(
-                    "Connect AI Usage to read your usage.",
-                    "Conecta AI Usage para consultar tu uso."
+                    "Connect ResetPls to read your usage.",
+                    "Conecta ResetPls para consultar tu uso."
                 )
             )
         replace(snapshot: restoredSnapshot, status: restoredStatus)
@@ -665,12 +665,12 @@ public final class UsageStore: ObservableObject {
             phase = .actionRequired(.signIn)
             displayMessage = hasLastKnownValue
                 ? AppLanguage.current.text(
-                    "Connect AI Usage to refresh the last saved value.",
-                    "Conecta AI Usage para actualizar el último dato guardado."
+                    "Connect ResetPls to refresh the last saved value.",
+                    "Conecta ResetPls para actualizar el último dato guardado."
                 )
                 : AppLanguage.current.text(
-                    "Connect AI Usage to read your usage.",
-                    "Conecta AI Usage para consultar tu uso."
+                    "Connect ResetPls to read your usage.",
+                    "Conecta ResetPls para consultar tu uso."
                 )
         case .executableNotFound:
             phase = .actionRequired(.install)

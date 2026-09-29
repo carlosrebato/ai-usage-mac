@@ -1,4 +1,8 @@
-# Distributing AI Usage for Mac
+# Distributing ResetPls for Mac
+
+The visible brand is ResetPls, but the macOS bundle and executable remain
+`AI Usage.app` / `AI Usage` for compatibility with existing Sparkle installations.
+Do not rename the bundle inside a ZIP update without a tested migration path.
 
 ## What CI validates
 
@@ -96,7 +100,7 @@ Apple, staples and validates the ticket, checks Gatekeeper and creates
 
 ## Publish an automatic update
 
-AI Usage uses Sparkle. The public EdDSA key is embedded in the app; its private
+ResetPls uses Sparkle. The public EdDSA key is embedded in the app; its private
 counterpart stays in the login Keychain under the account
 `com.carlosrebato.aiusage` and must never be committed.
 

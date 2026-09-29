@@ -77,7 +77,7 @@
 		B074A93DB7C6710897C43BA9 /* AIUsageWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AIUsageWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CBEB9DBCAD3BB4D03259BD97 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		DB562CA2D1EE582B8E28475E /* AIUsageIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AIUsageIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F0E9B597694C313B5C0F5415 /* ai-usage-mac-release-013 */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "ai-usage-mac-release-013"; path = .; sourceTree = SOURCE_ROOT; };
+		DCC738C33730A6D8ED1CD322 /* repo */ = {isa = PBXFileReference; lastKnownFileType = folder; name = repo; path = .; sourceTree = SOURCE_ROOT; };
 		F17790B1FDFFFA95070A3874 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -138,7 +138,7 @@
 		65C9F6C49F90B59D7DAD9264 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F0E9B597694C313B5C0F5415 /* ai-usage-mac-release-013 */,
+				DCC738C33730A6D8ED1CD322 /* repo */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -364,7 +364,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_AIUsageRemoteConfigPublicKey = "$(AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY)";
 				INFOPLIST_KEY_AIUsageRemoteConfigURL = "$(AI_USAGE_REMOTE_CONFIG_URL)";
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
+				INFOPLIST_KEY_CFBundleDisplayName = ResetPls;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -372,7 +372,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_IOS_BUNDLE_ID)";
-				PRODUCT_NAME = "AI Usage";
+				PRODUCT_NAME = ResetPls;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -389,7 +389,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_AIUsageRemoteConfigPublicKey = "$(AI_USAGE_REMOTE_CONFIG_PUBLIC_KEY)";
 				INFOPLIST_KEY_AIUsageRemoteConfigURL = "$(AI_USAGE_REMOTE_CONFIG_URL)";
-				INFOPLIST_KEY_CFBundleDisplayName = "AI Usage";
+				INFOPLIST_KEY_CFBundleDisplayName = ResetPls;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -397,7 +397,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(AI_USAGE_IOS_BUNDLE_ID)";
-				PRODUCT_NAME = "AI Usage";
+				PRODUCT_NAME = ResetPls;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -444,7 +444,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -458,7 +458,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -594,7 +594,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -614,7 +614,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
