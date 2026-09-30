@@ -3,7 +3,7 @@
 set -eu
 
 if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 /path/to/AI\ Usage.app NOTARY_KEYCHAIN_PROFILE" >&2
+  echo "Usage: $0 /path/to/ResetPls.app NOTARY_KEYCHAIN_PROFILE" >&2
   exit 2
 fi
 

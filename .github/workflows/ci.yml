@@ -26,6 +26,6 @@ jobs:
         run: Scripts/build-unsigned-artifact.sh
       - uses: actions/upload-artifact@v6
         with:
-          name: AI-Usage-unsigned-diagnostic
-          path: .artifacts/AI-Usage-unsigned.zip
+          name: ResetPls-unsigned-diagnostic
+          path: .artifacts/ResetPls-unsigned.zip
           retention-days: 7

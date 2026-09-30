@@ -3,13 +3,13 @@
 set -eu
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 /path/to/AI\ Usage.app" >&2
+  echo "Usage: $0 /path/to/ResetPls.app" >&2
   exit 2
 fi
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 APP_PATH="$1"
-EXECUTABLE="$APP_PATH/Contents/MacOS/AI Usage"
+EXECUTABLE="$APP_PATH/Contents/MacOS/ResetPls"
 
 fail() {
   echo "Release readiness failed: $1" >&2

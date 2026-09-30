@@ -3,13 +3,13 @@
 set -eu
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "Usage: $0 /path/to/AI\ Usage.app [relaunch-count]" >&2
+  echo "Usage: $0 /path/to/ResetPls.app [relaunch-count]" >&2
   exit 2
 fi
 
 APP_PATH="$1"
 RELAUNCH_COUNT="${2:-3}"
-EXECUTABLE="$APP_PATH/Contents/MacOS/AI Usage"
+EXECUTABLE="$APP_PATH/Contents/MacOS/ResetPls"
 REPORT_DIR="${TMPDIR:-/private/tmp}/ai-usage-smoke"
 EXPECTED_BUNDLE_ID="${AI_USAGE_EXPECTED_BUNDLE_ID:-}"
 

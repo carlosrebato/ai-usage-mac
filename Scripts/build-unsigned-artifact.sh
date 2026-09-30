@@ -4,9 +4,9 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 DERIVED_DATA="$ROOT/.derivedData"
-APP_PATH="$DERIVED_DATA/Build/Products/Release/AI Usage.app"
+APP_PATH="$DERIVED_DATA/Build/Products/Release/ResetPls.app"
 ARTIFACTS="$ROOT/.artifacts"
-ZIP_PATH="$ARTIFACTS/AI-Usage-unsigned.zip"
+ZIP_PATH="$ARTIFACTS/ResetPls-unsigned.zip"
 
 cd "$ROOT"
 xcodegen generate

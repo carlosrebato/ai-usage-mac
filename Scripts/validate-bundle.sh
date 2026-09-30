@@ -2,7 +2,7 @@
 
 set -eu
 
-APP_PATH="${1:-.derivedData/Build/Products/Release/AI Usage.app}"
+APP_PATH="${1:-.derivedData/Build/Products/Release/ResetPls.app}"
 EXPECTED_APP_ID="${AI_USAGE_APP_BUNDLE_ID:-com.example.aiusage}"
 EXPECTED_WIDGET_ID="${AI_USAGE_WIDGET_BUNDLE_ID:-$EXPECTED_APP_ID.widgets}"
 
@@ -14,7 +14,7 @@ fail() {
 [ -d "$APP_PATH" ] || fail "app not found at $APP_PATH"
 
 APP_INFO="$APP_PATH/Contents/Info.plist"
-APP_EXECUTABLE="$APP_PATH/Contents/MacOS/AI Usage"
+APP_EXECUTABLE="$APP_PATH/Contents/MacOS/ResetPls"
 PLUGINS_PATH="$APP_PATH/Contents/PlugIns"
 SPARKLE_PATH="$APP_PATH/Contents/Frameworks/Sparkle.framework"
 
@@ -36,6 +36,8 @@ read_plist() {
 
 APP_ID="$(read_plist "$APP_INFO" CFBundleIdentifier)"
 APP_DISPLAY_NAME="$(read_plist "$APP_INFO" CFBundleDisplayName)"
+APP_BUNDLE_NAME="$(read_plist "$APP_INFO" CFBundleName)"
+SPARKLE_BUNDLE_NAME="$(read_plist "$APP_INFO" SUBundleName)"
 WIDGET_ID="$(read_plist "$WIDGET_INFO" CFBundleIdentifier)"
 WIDGET_DISPLAY_NAME="$(read_plist "$WIDGET_INFO" CFBundleDisplayName)"
 APP_VERSION="$(read_plist "$APP_INFO" CFBundleShortVersionString)"
@@ -50,6 +52,8 @@ AUTOMATIC_INSTALLS="$(read_plist "$APP_INFO" SUAutomaticallyUpdate)"
 
 [ "$APP_ID" = "$EXPECTED_APP_ID" ] || fail "unexpected app bundle identifier: $APP_ID"
 [ "$APP_DISPLAY_NAME" = "ResetPls" ] || fail "unexpected app display name: $APP_DISPLAY_NAME"
+[ "$APP_BUNDLE_NAME" = "ResetPls" ] || fail "unexpected app bundle name: $APP_BUNDLE_NAME"
+[ "$SPARKLE_BUNDLE_NAME" = "ResetPls" ] || fail "unexpected Sparkle bundle name: $SPARKLE_BUNDLE_NAME"
 [ "$WIDGET_ID" = "$EXPECTED_WIDGET_ID" ] || fail "unexpected widget bundle identifier: $WIDGET_ID"
 [ "$WIDGET_DISPLAY_NAME" = "ResetPls" ] || fail "unexpected widget display name: $WIDGET_DISPLAY_NAME"
 [ "$APP_VERSION" = "$WIDGET_VERSION" ] || fail "app and widget marketing versions differ"

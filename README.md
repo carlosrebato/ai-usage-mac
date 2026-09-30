@@ -12,10 +12,12 @@ credentials to the project maintainers.
 ## Install
 
 Download the latest notarized macOS ZIP from
-[GitHub Releases](https://github.com/carlosrebato/ai-usage-mac/releases), unzip it
-and move **AI Usage.app** to Applications. The app is now branded **ResetPls**;
-the on-disk bundle keeps its former name so existing installations can update
-automatically. Releases built before version 0.1.5 still display the old name.
+[GitHub Releases](https://github.com/carlosrebato/ai-usage-mac/releases) and
+move the app to Applications. Stable 0.1.5 is branded ResetPls but its file is
+still named **AI Usage.app**. The 0.1.6 transition beta installs as
+**ResetPls.app**; existing testers must follow the one-time steps in
+[DISTRIBUTION.md](DISTRIBUTION.md) rather than extracting it over the old app.
+Releases built before version 0.1.5 still display the old name.
 The current release is a public beta;
 please report reproducible issues without attaching credentials or conversation
 logs.
@@ -88,7 +90,8 @@ Scripts/build-signed-debug.sh
 
 The script builds outside synced folders, validates the signature, bundle ID
 and App Group, and avoids Finder metadata that can invalidate `codesign`. Install
-the app you use regularly at `/Applications/AI Usage.app`.
+the app you use regularly at `/Applications/ResetPls.app` for builds 0.1.6 and
+newer. Stable 0.1.5 still lives at `/Applications/AI Usage.app`.
 
 The public project defaults to `com.example.aiusage` and
 `group.com.example.aiusage`. Official releases override the build settings
@@ -163,7 +166,7 @@ RUN_CLAUDE_INTEGRATION_TEST=1 swift test --filter probesTheLocalClaudeLogin
 Permission persistence must be tested with a stably signed bundle, not SwiftPM:
 
 ```sh
-Scripts/smoke-test-signed-app.sh "/Applications/AI Usage.app" 3
+Scripts/smoke-test-signed-app.sh "/Applications/ResetPls.app" 3
 ```
 
 To reproduce the unsigned diagnostic bundle built by CI:

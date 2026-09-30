@@ -34,6 +34,8 @@
 	<true/>
 	<key>SUAutomaticallyUpdate</key>
 	<true/>
+	<key>SUBundleName</key>
+	<string>ResetPls</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUEnableInstallerLauncherService</key>
