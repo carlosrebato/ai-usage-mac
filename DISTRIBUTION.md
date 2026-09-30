@@ -1,14 +1,40 @@
 # Distributing ResetPls for Mac
 
-The visible brand is ResetPls, but the macOS bundle and executable remain
-`AI Usage.app` / `AI Usage` for compatibility with existing Sparkle installations.
-Do not rename the bundle inside a ZIP update without a tested migration path.
+Stable 0.1.5 still installs as `AI Usage.app`. The 0.1.6 transition beta builds
+as `ResetPls.app`. Keep the bundle identifier, App Group, Keychain group, and
+Sparkle feed unchanged. Do not add the transition ZIP to the automatic update
+feed until a renamed installation receives a subsequent ZIP update in testing.
+
+### One-time transition for existing testers
+
+1. Publish the signed, notarized `ResetPls.app` ZIP as a **GitHub prerelease**,
+   without changing `appcast.xml`. This keeps stable users, including anyone
+   away from their Mac, on the existing build.
+2. Ask each tester to quit AI Usage completely, move `AI Usage.app` from
+   Applications to the Trash **without emptying it**, then move `ResetPls.app`
+   from the beta ZIP into Applications. Do not leave both copies in Applications.
+3. Launch `ResetPls.app`. Confirm both provider connections, menu-bar values,
+   settings, widget, and local token-history permissions survived. Run the
+   signed smoke test against `/Applications/ResetPls.app`.
+4. Publish a second beta ZIP (newer `CFBundleVersion`) containing
+   `ResetPls.app`, add **that** beta to the Sparkle feed, and verify an ordinary
+   update from the renamed installation. Do not promote stable before this
+   passes on the maintainer's Mac and one other tester's Mac.
+5. If the transition fails, quit `ResetPls.app`, move it out of Applications,
+   and restore `AI Usage.app` from the Trash. Do not erase app data or Keychain
+   entries.
+
+Sparkle's stock SwiftPM framework keeps the existing on-disk application path
+when installing a ZIP. A package update is not an automatic workaround:
+Sparkle may still try to relaunch the former path after installation. The
+manual transition avoids a source fork of Sparkle and limits the one-time step
+to existing users; fresh users receive `ResetPls.app` directly.
 
 ## What CI validates
 
 Every change runs the test suite, regenerates the Xcode project, builds the app
 and widget in Release, and validates the bundle structure. GitHub retains an
-`AI-Usage-unsigned-diagnostic` ZIP for seven days.
+`ResetPls-unsigned-diagnostic` ZIP for seven days.
 
 That artifact is unsigned and must not be published as a release. It exists to
 catch compilation errors, version mismatches and malformed WidgetKit bundles.
@@ -54,7 +80,7 @@ Before publishing, complete onboarding in the installed app and run:
 
 ```sh
 AI_USAGE_EXPECTED_BUNDLE_ID=com.carlosrebato.aiusage \
-Scripts/smoke-test-signed-app.sh "/Applications/AI Usage.app" 3
+Scripts/smoke-test-signed-app.sh "/Applications/ResetPls.app" 3
 ```
 
 Repeat the install and smoke test in a clean macOS user account or another Mac.
@@ -67,13 +93,13 @@ separate `notarytool` profile:
 
 ```sh
 xcodebuild -exportArchive \
-  -archivePath "/path/AI Usage.xcarchive" \
+  -archivePath "/path/ResetPls.xcarchive" \
   -exportPath "/path/upload" \
   -exportOptionsPlist Configurations/ExportOptions-DeveloperID-Upload.plist \
   -allowProvisioningUpdates
 
 xcodebuild -exportNotarizedApp \
-  -archivePath "/path/AI Usage.xcarchive" \
+  -archivePath "/path/ResetPls.xcarchive" \
   -exportPath "/path/notarized"
 ```
 
@@ -90,13 +116,13 @@ xcrun notarytool store-credentials AIUsage-notary \
   --password "APP_SPECIFIC_PASSWORD"
 
 Scripts/notarize-signed-app.sh \
-  "/path/AI Usage.app" \
+  "/path/ResetPls.app" \
   AIUsage-notary
 ```
 
 The script rejects apps not signed with `Developer ID Application`, waits for
 Apple, staples and validates the ticket, checks Gatekeeper and creates
-`AI Usage-notarized.zip`.
+`ResetPls-notarized.zip`.
 
 ## Publish an automatic update
 

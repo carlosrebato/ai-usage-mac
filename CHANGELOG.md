@@ -2,6 +2,15 @@
 
 All notable changes to ResetPls for Mac (formerly AI Usage) are documented here.
 
+## 0.1.6-beta.1 — unreleased
+
+- Build the macOS application as `ResetPls.app` with a `ResetPls` executable and
+  Sparkle bundle name while preserving its bundle identifier, App Group,
+  Keychain group, and update feed.
+- Offer this transition build as a direct beta download only. Existing testers
+  replace the old app manually once; it must not enter the automatic update
+  feed until the renamed install and its next normal update have been tested.
+
 ## 0.1.5 — 2026-09-29
 
 - Rename the visible Mac and iOS app, widget, onboarding, settings and diagnostics
