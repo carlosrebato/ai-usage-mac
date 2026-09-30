@@ -2,6 +2,12 @@
 
 All notable changes to ResetPls for Mac (formerly AI Usage) are documented here.
 
+## 0.1.6-beta.2 — unreleased
+
+- Advance the renamed app to build 19 for an end-to-end Sparkle update test
+  from the manually installed `ResetPls.app` beta 1. The beta update channel
+  is opt-in; the stable channel remains on 0.1.5.
+
 ## 0.1.6-beta.1 — unreleased
 
 - Build the macOS application as `ResetPls.app` with a `ResetPls` executable and
