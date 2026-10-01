@@ -4,6 +4,7 @@ import AIUsageMacServices
 import AIUsageProviderServices
 import AppKit
 import Combine
+import os
 import SwiftUI
 
 private let menuBarLabelHeight: CGFloat = 19
@@ -204,6 +205,11 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
     private var minuteTimer: AnyCancellable?
+    private var wakeRecoveryTask: Task<Void, Never>?
+    private let wakeLogger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "ResetPls",
+        category: "wake-recovery"
+    )
     private var floatingWindow: NSPanel?
     private var settingsWindow: NSWindow?
     private var localDismissMonitor: Any?
@@ -318,6 +324,11 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             }
             .store(in: &cancellables)
 
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.scheduleWakeRecovery() }
+            .store(in: &cancellables)
+
         providerSelection.$activeProviders
             .receive(on: RunLoop.main)
             .sink { [weak self] providers in
@@ -334,7 +345,38 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         let enabled = UserDefaults.standard.object(
             forKey: AppPreferenceKey.automaticRefresh
         ) as? Bool ?? true
+        if !enabled {
+            wakeRecoveryTask?.cancel()
+            wakeRecoveryTask = nil
+        }
         store.setAutomaticPollingEnabled(enabled)
+    }
+
+    private func scheduleWakeRecovery() {
+        guard UserDefaults.standard.object(forKey: AppPreferenceKey.automaticRefresh)
+            as? Bool ?? true else { return }
+        wakeRecoveryTask?.cancel()
+        wakeLogger.info("System wake detected; checking due providers after network settles")
+        wakeRecoveryTask = Task { [weak self] in
+            // The first probe may race Wi-Fi/VPN reconnection. A second probe
+            // covers its normal retry deadline without bypassing Retry-After.
+            for (attempt, delay) in [(1, Duration.seconds(5)), (2, .seconds(45))] {
+                do {
+                    try await Task.sleep(for: delay)
+                } catch {
+                    return
+                }
+                guard let self, !Task.isCancelled else { return }
+                guard UserDefaults.standard.object(forKey: AppPreferenceKey.automaticRefresh)
+                    as? Bool ?? true else { return }
+                await self.store.refreshWhenIdle(force: false, allowInteraction: false)
+                let states = self.store.connectionStatuses.map {
+                    let error = self.store.diagnosticFailureCode(for: $0.id) ?? "none"
+                    return "\($0.id.rawValue):\($0.dataState.rawValue):\(error)"
+                }.joined(separator: ",")
+                self.wakeLogger.info("Wake probe \(attempt) complete; states=\(states, privacy: .public)")
+            }
+        }
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {

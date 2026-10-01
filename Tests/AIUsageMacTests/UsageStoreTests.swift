@@ -643,6 +643,7 @@ struct UsageStoreTests {
         #expect(!text.contains("/Users/alice"))
         #expect(text.contains("\"phase\" : \"retrying\""))
         #expect(text.contains("\"lastFailureCode\" : \"server-error\""))
+        #expect(store.diagnosticFailureCode(for: .codex) == "server-error")
         #expect(text.contains("\"schemaVersion\" : 2"))
     }
 

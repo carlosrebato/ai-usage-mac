@@ -30,6 +30,11 @@ public final class UsageStore: ObservableObject {
         providerStates.compactMap(\.connection)
     }
 
+    /// A bounded error category for support logs; never a provider response or credential.
+    public func diagnosticFailureCode(for provider: UsageProviderID) -> String? {
+        lastFailureCodes[provider]
+    }
+
     public convenience init() {
         self.init(
             now: .now,
