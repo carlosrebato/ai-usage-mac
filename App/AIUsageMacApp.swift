@@ -201,6 +201,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
     private let assistantSetupContext: AssistantSetupContext
     private let providerSelection: ProviderSelectionStore
     private let statusItem: NSStatusItem
+    private let statusDotsOverlay = MenuBarStatusDotsOverlay(frame: .zero)
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
     private var minuteTimer: AnyCancellable?
@@ -275,6 +276,9 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
         button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
+        statusDotsOverlay.frame = button.bounds
+        statusDotsOverlay.autoresizingMask = [.width, .height]
+        button.addSubview(statusDotsOverlay)
     }
 
     private func configurePopover() {
@@ -587,6 +591,7 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             }
 
         guard showPercentage, !snapshots.isEmpty else {
+            statusDotsOverlay.image = nil
             let image = (NSImage(named: "AIUsageBrand")
                 ?? NSApplication.shared.applicationIconImage)?.copy() as? NSImage
             image?.size = NSSize(width: 18, height: 18)
@@ -614,25 +619,33 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        // The status button can temporarily inherit a dark vibrant appearance
-        // while its popover is open even when the menu bar itself is light.
-        // Keep the pre-rendered text/icons aligned with the system appearance;
-        // the severity dots remain colored in the non-template image.
-        let isDark = NSApp.effectiveAppearance.bestMatch(
-            from: [.darkAqua, .aqua]
-        ) == .darkAqua
-        let renderer = ImageRenderer(
+        // AppKit tints the template label for the actual menu-bar state.
+        // Draw severity dots separately so they retain their own colors.
+        let foregroundRenderer = ImageRenderer(
             content: MenuBarUsageImageContent(
                 snapshots: snapshots,
-                colorScheme: isDark ? .dark : .light,
+                colorScheme: .light,
                 showResetTimes: showResetTimes,
-                now: .now
+                now: .now,
+                layer: .template
             )
         )
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else {
+        let dotsRenderer = ImageRenderer(
+            content: MenuBarUsageImageContent(
+                snapshots: snapshots,
+                colorScheme: .light,
+                showResetTimes: showResetTimes,
+                now: .now,
+                layer: .dots
+            )
+        )
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        foregroundRenderer.scale = scale
+        dotsRenderer.scale = scale
+        guard let image = foregroundRenderer.nsImage else {
             // A failed SwiftUI offscreen render must not leave the launch icon
             // in place when usable percentages are already available.
+            statusDotsOverlay.image = nil
             button.image = nil
             button.imagePosition = .noImage
             button.title = snapshots.compactMap { snapshot in
@@ -648,7 +661,8 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             statusItem.length = NSStatusItem.variableLength
             return
         }
-        image.isTemplate = false
+        image.isTemplate = true
+        statusDotsOverlay.image = dotsRenderer.nsImage
         button.title = ""
         button.imagePosition = .imageOnly
         button.image = image
@@ -690,6 +704,25 @@ private final class AIUsageFloatingPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
+private final class MenuBarStatusDotsOverlay: NSView {
+    var image: NSImage? {
+        didSet { needsDisplay = true }
+    }
+
+    override var isOpaque: Bool { false }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let image else { return }
+        let origin = NSPoint(
+            x: (bounds.width - image.size.width) / 2,
+            y: (bounds.height - image.size.height) / 2
+        )
+        image.draw(at: origin, from: .zero, operation: .sourceOver, fraction: 1)
+    }
+}
+
 private struct MenuBarUsageLabel: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -720,7 +753,8 @@ private struct MenuBarUsageLabel: View {
                 snapshots: visibleSnapshots,
                 colorScheme: colorScheme,
                 showResetTimes: showResetTimes,
-                now: now
+                now: now,
+                layer: .complete
             )
         )
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
@@ -758,11 +792,18 @@ private struct MenuBarUsageLabel: View {
     }
 }
 
+private enum MenuBarRenderLayer {
+    case complete
+    case template
+    case dots
+}
+
 private struct MenuBarUsageImageContent: View {
     let snapshots: [AIUsageCore.ProviderUsageSnapshot]
     let colorScheme: ColorScheme
     let showResetTimes: Bool
     let now: Date
+    let layer: MenuBarRenderLayer
 
     var body: some View {
         HStack(spacing: 8) {
@@ -798,7 +839,11 @@ private struct MenuBarUsageImageContent: View {
     }
 
     private var foregroundColor: Color {
-        colorScheme == .dark ? .white : .black
+        switch layer {
+        case .complete: colorScheme == .dark ? .white : .black
+        case .template: .black
+        case .dots: .clear
+        }
     }
 
     private func percent(_ value: Double?) -> String {
@@ -820,7 +865,7 @@ private struct MenuBarUsageImageContent: View {
                 AIUsageCore.UsageSeverity.forPercent(snapshot.menuBarPercent)
             )
         return Circle()
-            .fill(color)
+            .fill(layer == .template ? .clear : color)
             .frame(width: 6, height: 6)
     }
 
