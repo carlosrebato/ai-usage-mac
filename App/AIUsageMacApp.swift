@@ -614,7 +614,11 @@ private final class NativeStatusBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        let isDark = button.effectiveAppearance.bestMatch(
+        // The status button can temporarily inherit a dark vibrant appearance
+        // while its popover is open even when the menu bar itself is light.
+        // Keep the pre-rendered text/icons aligned with the system appearance;
+        // the severity dots remain colored in the non-template image.
+        let isDark = NSApp.effectiveAppearance.bestMatch(
             from: [.darkAqua, .aqua]
         ) == .darkAqua
         let renderer = ImageRenderer(
